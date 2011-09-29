@@ -1,6 +1,8 @@
 from django.contrib.auth.models import User
 from django.db import models
 
+from countria.models import *
+
 from directseo.seo.models import BusinessUnit
 
 
@@ -17,59 +19,32 @@ class SavedSearch(models.Model):
 
     name = models.CharField(max_length=100)    
     date_created = models.DateField(auto_now=True)
-    country_filter = models.TextField(null=True, blank=True)
-    state_filter = models.TextField(null=True, blank=True)
-    city_filter = models.TextField(null=True, blank=True)
-    keyword_filter = models.TextField(null=True, blank=True)
-    title_filter = models.TextField(null=True, blank=True)
-    career_filter = models.TextField(null=True, blank=True)
+    country = models.ForeignKey(Country)
+    state = models.ForeignKey(State)
+    city = models.ForeignKey(City)
+    keyword = models.TextField(null=True, blank=True)
+    title = models.TextField(null=True, blank=True)
 
-    def full_querystring(self):
-        fields = [date_created, country_filter, state_filter, city_filter,
-                  keyword_filter, title_filter, career_filter]
-        qs = ''
-        for i in range(len(fields)):
-            if fields[i] != fields[-1]:
-                qs += '%s+AND+' % fields[i]
-            else:
-                qs += '%s' % fields[i]
-
-        return qs
-    
-
-class Country(models.Model):
-    """
-    Represents a country in the world.
-
-    """
-    name = models.CharField(max_length=100)
-    shortname = models.CharField(max_length=3)
-    
-    def save(self, *args, **kwargs):
-        super(Country, self).save(*args, **kwargs, using='geodata')
-
-
-class State(models.Model):
-    """
-    Represents a state in the world.
-
-    """
-    country = models.OneToOneField(Country)
-    name = models.CharField(max_length=100)
-    shortname = models.CharField(max_length=3)
-
-    def save(self, *args, **kwargs):
-        super(State, self).save(*args, **kwargs, using='geodata')
+    def country_qs(self):
+        return "country:%s" % self.country
         
+    def state_qs(self):
+        return "state:%s" % self.state
 
-class City(models.Model):
-    """
-    Represents a city in the world.
+    def city_qs(self):
+        return "city:%s" % self.city
 
-    """
-    state = models.OneToOneField(State)
-    name = models.CharField(max_length=100)
-    shortname = models.CharField(max_length=3)
+    def keyword_qs(self):
+        return "keyword:%s" % self.keyword
+
+    def title_qs(self):
+        return "title:%s" % self.title
+
+
+    class Meta:
+        verbose_name = 'Saved Search'
+        verbose_name_plural = 'Saved Searches'
+        
     
-    def save(self, *args, **kwargs):
-        super(City, self).save(*args, **kwargs, using='geodata')
+
+    

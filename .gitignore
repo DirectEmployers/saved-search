@@ -1,1 +1,4 @@
 *.tar.gz
+*.pyc
+locpop.py
+python_usdol.py
