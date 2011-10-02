@@ -1,4 +1,4 @@
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from django.db import models
 
 from directseo.seo.models import BusinessUnit, City, Country, State
@@ -19,7 +19,7 @@ class SavedSearch(models.Model):
                                                        us-nursing,
                                                        texas-tech-support
                                                        """))
-    buid = models.ManyToManyField(BusinessUnit, blank=True, null=True)
+    group = models.ForeignKey(Group, blank=True, null=True)
     date_created = models.DateField(auto_now=True)
     country = models.ManyToManyField(Country, blank=True, null=True)
     state = models.ManyToManyField(State, blank=True, null=True)
