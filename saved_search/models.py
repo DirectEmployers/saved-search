@@ -1,27 +1,22 @@
 from django.contrib.auth.models import User
 from django.db import models
 
-from countria.models import *
-
-from directseo.seo.models import BusinessUnit
+from directseo.seo.models import BusinessUnit, City, Country, State
 
 
 class SavedSearch(models.Model):
     """
     Represents the data in a saved search.
 
-    The fields themselves represent the query string passed to Solr, e.g.:
-    ?q=buid:2852+AND+state:indiana
-    
     """
     def __unicode__(self):
         return '%s :=> query=[]'
 
     name = models.CharField(max_length=100)    
     date_created = models.DateField(auto_now=True)
-    country = models.ForeignKey(Country)
-    state = models.ForeignKey(State)
-    city = models.ForeignKey(City)
+    country = models.ManyToManyField(Country)
+    state = models.ManyToManyField(State)
+    city = models.ManyToManyField(City)
     keyword = models.TextField(null=True, blank=True)
     title = models.TextField(null=True, blank=True)
 
