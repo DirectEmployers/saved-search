@@ -13,13 +13,42 @@ class Migration(SchemaMigration):
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('name', self.gf('django.db.models.fields.CharField')(max_length=100)),
             ('date_created', self.gf('django.db.models.fields.DateField')(auto_now=True, blank=True)),
-            ('country', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['countria.Country'])),
-            ('state', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['countria.State'])),
-            ('city', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['countria.City'])),
-            ('keyword', self.gf('django.db.models.fields.TextField')(null=True, blank=True)),
-            ('title', self.gf('django.db.models.fields.TextField')(null=True, blank=True)),
+            ('keyword', self.gf('django.db.models.fields.CharField')(max_length=255, null=True, blank=True)),
+            ('title', self.gf('django.db.models.fields.CharField')(max_length=255, null=True, blank=True)),
         ))
         db.send_create_signal('saved_search', ['SavedSearch'])
+
+        # Adding M2M table for field buid on 'SavedSearch'
+        db.create_table('saved_search_savedsearch_buid', (
+            ('id', models.AutoField(verbose_name='ID', primary_key=True, auto_created=True)),
+            ('savedsearch', models.ForeignKey(orm['saved_search.savedsearch'], null=False)),
+            ('businessunit', models.ForeignKey(orm['seo.businessunit'], null=False))
+        ))
+        db.create_unique('saved_search_savedsearch_buid', ['savedsearch_id', 'businessunit_id'])
+
+        # Adding M2M table for field country on 'SavedSearch'
+        db.create_table('saved_search_savedsearch_country', (
+            ('id', models.AutoField(verbose_name='ID', primary_key=True, auto_created=True)),
+            ('savedsearch', models.ForeignKey(orm['saved_search.savedsearch'], null=False)),
+            ('country', models.ForeignKey(orm['seo.country'], null=False))
+        ))
+        db.create_unique('saved_search_savedsearch_country', ['savedsearch_id', 'country_id'])
+
+        # Adding M2M table for field state on 'SavedSearch'
+        db.create_table('saved_search_savedsearch_state', (
+            ('id', models.AutoField(verbose_name='ID', primary_key=True, auto_created=True)),
+            ('savedsearch', models.ForeignKey(orm['saved_search.savedsearch'], null=False)),
+            ('state', models.ForeignKey(orm['seo.state'], null=False))
+        ))
+        db.create_unique('saved_search_savedsearch_state', ['savedsearch_id', 'state_id'])
+
+        # Adding M2M table for field city on 'SavedSearch'
+        db.create_table('saved_search_savedsearch_city', (
+            ('id', models.AutoField(verbose_name='ID', primary_key=True, auto_created=True)),
+            ('savedsearch', models.ForeignKey(orm['saved_search.savedsearch'], null=False)),
+            ('city', models.ForeignKey(orm['seo.city'], null=False))
+        ))
+        db.create_unique('saved_search_savedsearch_city', ['savedsearch_id', 'city_id'])
 
 
     def backwards(self, orm):
@@ -27,68 +56,59 @@ class Migration(SchemaMigration):
         # Deleting model 'SavedSearch'
         db.delete_table('saved_search_savedsearch')
 
+        # Removing M2M table for field buid on 'SavedSearch'
+        db.delete_table('saved_search_savedsearch_buid')
+
+        # Removing M2M table for field country on 'SavedSearch'
+        db.delete_table('saved_search_savedsearch_country')
+
+        # Removing M2M table for field state on 'SavedSearch'
+        db.delete_table('saved_search_savedsearch_state')
+
+        # Removing M2M table for field city on 'SavedSearch'
+        db.delete_table('saved_search_savedsearch_city')
+
 
     models = {
-        'countria.city': {
-            'Meta': {'object_name': 'City'},
-            'country': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['countria.Country']", 'null': 'True'}),
-            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'latitude': ('django.db.models.fields.DecimalField', [], {'default': "'0.0'", 'max_digits': '9', 'decimal_places': '6'}),
-            'longitude': ('django.db.models.fields.DecimalField', [], {'default': "'0.0'", 'max_digits': '9', 'decimal_places': '6'}),
-            'name': ('django.db.models.fields.CharField', [], {'max_length': '64'}),
-            'population': ('django.db.models.fields.PositiveIntegerField', [], {'null': 'True'}),
-            'state': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['countria.State']", 'null': 'True'})
-        },
-        'countria.continent': {
-            'Meta': {'unique_together': "(('name', 'code'),)", 'object_name': 'Continent'},
-            'code': ('django.db.models.fields.CharField', [], {'max_length': '2'}),
-            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'name': ('django.db.models.fields.CharField', [], {'max_length': '16'})
-        },
-        'countria.country': {
-            'Meta': {'object_name': 'Country'},
-            'capital': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'country_capital'", 'null': 'True', 'to': "orm['countria.City']"}),
-            'continent': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['countria.Continent']", 'null': 'True'}),
-            'currency': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['countria.Currency']", 'null': 'True'}),
-            'full_name': ('django.db.models.fields.CharField', [], {'max_length': '64'}),
-            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'idc': ('django.db.models.fields.PositiveIntegerField', [], {'null': 'True'}),
-            'iso_2': ('django.db.models.fields.CharField', [], {'max_length': '2', 'null': 'True'}),
-            'iso_3': ('django.db.models.fields.CharField', [], {'max_length': '3', 'null': 'True'}),
-            'iso_number': ('django.db.models.fields.PositiveIntegerField', [], {'null': 'True'}),
-            'latitude': ('django.db.models.fields.DecimalField', [], {'default': "'0.0'", 'max_digits': '9', 'decimal_places': '6'}),
-            'longitude': ('django.db.models.fields.DecimalField', [], {'default': "'0.0'", 'max_digits': '9', 'decimal_places': '6'}),
-            'name': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '64'}),
-            'population': ('django.db.models.fields.PositiveIntegerField', [], {'null': 'True'}),
-            'sovereignty': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['countria.Country']", 'null': 'True'}),
-            'tld': ('django.db.models.fields.CharField', [], {'max_length': '7', 'null': 'True'})
-        },
-        'countria.currency': {
-            'Meta': {'unique_together': "(('name', 'code'),)", 'object_name': 'Currency'},
-            'code': ('django.db.models.fields.CharField', [], {'max_length': '3'}),
-            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'name': ('django.db.models.fields.CharField', [], {'max_length': '16'})
-        },
-        'countria.state': {
-            'Meta': {'object_name': 'State'},
-            'capital': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'state_capital'", 'null': 'True', 'to': "orm['countria.City']"}),
-            'code': ('django.db.models.fields.CharField', [], {'max_length': '2'}),
-            'country': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'state_country'", 'null': 'True', 'to': "orm['countria.Country']"}),
-            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'latitude': ('django.db.models.fields.DecimalField', [], {'default': "'0.0'", 'max_digits': '9', 'decimal_places': '6'}),
-            'longitude': ('django.db.models.fields.DecimalField', [], {'default': "'0.0'", 'max_digits': '9', 'decimal_places': '6'}),
-            'name': ('django.db.models.fields.CharField', [], {'max_length': '64'})
-        },
         'saved_search.savedsearch': {
             'Meta': {'object_name': 'SavedSearch'},
-            'city': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['countria.City']"}),
-            'country': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['countria.Country']"}),
+            'buid': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'to': "orm['seo.BusinessUnit']", 'null': 'True', 'blank': 'True'}),
+            'city': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'to': "orm['seo.City']", 'null': 'True', 'blank': 'True'}),
+            'country': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'to': "orm['seo.Country']", 'null': 'True', 'blank': 'True'}),
             'date_created': ('django.db.models.fields.DateField', [], {'auto_now': 'True', 'blank': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'keyword': ('django.db.models.fields.TextField', [], {'null': 'True', 'blank': 'True'}),
+            'keyword': ('django.db.models.fields.CharField', [], {'max_length': '255', 'null': 'True', 'blank': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
-            'state': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['countria.State']"}),
-            'title': ('django.db.models.fields.TextField', [], {'null': 'True', 'blank': 'True'})
+            'state': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'to': "orm['seo.State']", 'null': 'True', 'blank': 'True'}),
+            'title': ('django.db.models.fields.CharField', [], {'max_length': '255', 'null': 'True', 'blank': 'True'})
+        },
+        'seo.businessunit': {
+            'Meta': {'object_name': 'BusinessUnit'},
+            'associated_jobs': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
+            'date_crawled': ('django.db.models.fields.DateTimeField', [], {}),
+            'date_updated': ('django.db.models.fields.DateTimeField', [], {}),
+            'id': ('django.db.models.fields.IntegerField', [], {'max_length': '10', 'primary_key': 'True'}),
+            'scheduled': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
+            'title': ('django.db.models.fields.CharField', [], {'max_length': '50', 'null': 'True', 'blank': 'True'})
+        },
+        'seo.city': {
+            'Meta': {'object_name': 'City'},
+            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'name': ('django.db.models.fields.CharField', [], {'max_length': '255', 'db_index': 'True'}),
+            'nation': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['seo.Country']"})
+        },
+        'seo.country': {
+            'Meta': {'object_name': 'Country'},
+            'abbrev': ('django.db.models.fields.CharField', [], {'max_length': '255', 'null': 'True', 'blank': 'True'}),
+            'abbrev_short': ('django.db.models.fields.CharField', [], {'db_index': 'True', 'max_length': '255', 'null': 'True', 'blank': 'True'}),
+            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'name': ('django.db.models.fields.CharField', [], {'max_length': '255', 'db_index': 'True'})
+        },
+        'seo.state': {
+            'Meta': {'unique_together': "(('name', 'nation'),)", 'object_name': 'State'},
+            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'name': ('django.db.models.fields.CharField', [], {'max_length': '255', 'db_index': 'True'}),
+            'nation': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['seo.Country']"})
         }
     }
 

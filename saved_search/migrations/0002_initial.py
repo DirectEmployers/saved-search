@@ -8,14 +8,15 @@ class Migration(SchemaMigration):
 
     def forwards(self, orm):
         
-        # Deleting field 'SavedSearch.city'
-        db.delete_column('saved_search_savedsearch', 'city_id')
-
-        # Deleting field 'SavedSearch.state'
-        db.delete_column('saved_search_savedsearch', 'state_id')
-
-        # Deleting field 'SavedSearch.country'
-        db.delete_column('saved_search_savedsearch', 'country_id')
+        # Adding model 'SavedSearch'
+        db.create_table('saved_search_savedsearch', (
+            ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
+            ('name', self.gf('django.db.models.fields.CharField')(max_length=100)),
+            ('date_created', self.gf('django.db.models.fields.DateField')(auto_now=True, blank=True)),
+            ('keyword', self.gf('django.db.models.fields.CharField')(max_length=255, null=True, blank=True)),
+            ('title', self.gf('django.db.models.fields.CharField')(max_length=255, null=True, blank=True)),
+        ))
+        db.send_create_signal('saved_search', ['SavedSearch'])
 
         # Adding M2M table for field buid on 'SavedSearch'
         db.create_table('saved_search_savedsearch_buid', (
@@ -52,14 +53,8 @@ class Migration(SchemaMigration):
 
     def backwards(self, orm):
         
-        # Adding field 'SavedSearch.city'
-        db.add_column('saved_search_savedsearch', 'city', self.gf('django.db.models.fields.related.ForeignKey')(default='', to=orm['countria.City']), keep_default=False)
-
-        # Adding field 'SavedSearch.state'
-        db.add_column('saved_search_savedsearch', 'state', self.gf('django.db.models.fields.related.ForeignKey')(default='', to=orm['countria.State']), keep_default=False)
-
-        # Adding field 'SavedSearch.country'
-        db.add_column('saved_search_savedsearch', 'country', self.gf('django.db.models.fields.related.ForeignKey')(default='', to=orm['countria.Country']), keep_default=False)
+        # Deleting model 'SavedSearch'
+        db.delete_table('saved_search_savedsearch')
 
         # Removing M2M table for field buid on 'SavedSearch'
         db.delete_table('saved_search_savedsearch_buid')
@@ -82,10 +77,10 @@ class Migration(SchemaMigration):
             'country': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'to': "orm['seo.Country']", 'null': 'True', 'blank': 'True'}),
             'date_created': ('django.db.models.fields.DateField', [], {'auto_now': 'True', 'blank': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'keyword': ('django.db.models.fields.TextField', [], {'null': 'True', 'blank': 'True'}),
+            'keyword': ('django.db.models.fields.CharField', [], {'max_length': '255', 'null': 'True', 'blank': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'state': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'to': "orm['seo.State']", 'null': 'True', 'blank': 'True'}),
-            'title': ('django.db.models.fields.TextField', [], {'null': 'True', 'blank': 'True'})
+            'title': ('django.db.models.fields.CharField', [], {'max_length': '255', 'null': 'True', 'blank': 'True'})
         },
         'seo.businessunit': {
             'Meta': {'object_name': 'BusinessUnit'},
