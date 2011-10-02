@@ -18,8 +18,8 @@ class SavedSearch(models.Model):
     country = models.ManyToManyField(Country, blank=True, null=True)
     state = models.ManyToManyField(State, blank=True, null=True)
     city = models.ManyToManyField(City, blank=True, null=True)
-    keyword = models.TextField(null=True, blank=True)
-    title = models.TextField(null=True, blank=True)
+    keyword = models.CharField(max_length=255, null=True, blank=True)
+    title = models.CharField(max_length=255, null=True, blank=True)
 
     def country_qs(self):
         return "country:%s" % self.country
