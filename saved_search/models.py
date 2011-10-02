@@ -12,11 +12,12 @@ class SavedSearch(models.Model):
     def __unicode__(self):
         return '%s :=> query=[]'
 
-    name = models.CharField(max_length=100)    
+    name = models.CharField(max_length=100)
+    buid = models.ManyToManyField(BusinessUnit, blank=True, null=True)
     date_created = models.DateField(auto_now=True)
-    country = models.ManyToManyField(Country)
-    state = models.ManyToManyField(State)
-    city = models.ManyToManyField(City)
+    country = models.ManyToManyField(Country, blank=True, null=True)
+    state = models.ManyToManyField(State, blank=True, null=True)
+    city = models.ManyToManyField(City, blank=True, null=True)
     keyword = models.TextField(null=True, blank=True)
     title = models.TextField(null=True, blank=True)
 

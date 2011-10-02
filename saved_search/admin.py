@@ -1,12 +1,12 @@
 from django.contrib import admin
 
-from countria.models import *
-
 from saved_search.models import SavedSearch
 
+
 class SavedSearchAdmin(admin.ModelAdmin):
-    list_display = ('name', 'last_updated', 'country', 'state', 'city',
-                    'keyword', 'title')
+    list_display = ('name', 'last_updated', 'keyword', 'title')
+    search_fields = ['country__name', 'state__name', 'city__name', 'keyword',
+                     'title']
 
     def formfield_for_choice_field(self, db_field, **kwargs):
         if db_field.name == 'country':
