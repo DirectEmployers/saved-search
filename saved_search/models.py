@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User, Group
 from django.db import models
+from django.template.defaultfilters import slugify
 
 from directseo.seo.models import BusinessUnit, City, Country, State
 
@@ -7,10 +8,6 @@ from directseo.seo.models import BusinessUnit, City, Country, State
 class SavedSearch(models.Model):
     """
     Represents the data in a saved search.
-
-    Instead of creating a SearchQuerySet object and filtering thereupon,
-    the save() method here will make available a self.queryset attribute
-    which will be passed directly to settings.HAYSTACK_SOLR_URL.
 
     """
     def __unicode__(self):
@@ -26,6 +23,7 @@ class SavedSearch(models.Model):
                                                        us-nursing,
                                                        texas-tech-support
                                                        """))
+    name_slug = models.SlugField(max_length=100, blank=True, null=True)
     group = models.ForeignKey(Group, blank=True, null=True)
     date_created = models.DateField(auto_now=True)
     country = models.ManyToManyField(Country, blank=True, null=True)
@@ -45,7 +43,14 @@ class SavedSearch(models.Model):
                                         company's job listings. e.g.:
                                         Dental Technician,Office Assistant
                                         """))
-
+    def save(self, *args, **kwargs):
+        # Calculate the slug value only on the first save, so that
+        # any dependent URLs do not change.
+        if not self.id:
+            self.name_slug = slugify(self.name)
+            
+        super(SavedSearch, self).save(*args, **kwargs)
+    
     def _make_qs(self, field, params):
         """
         Generates the query string which will be passed to Solr directly.
