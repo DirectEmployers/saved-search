@@ -11,10 +11,7 @@ class SavedSearch(models.Model):
 
     """
     def __unicode__(self):
-        # self.querystring will not be available as an attribute until
-        # post-save. If you call __unicode__ pre-save it will throw
-        # an error.
-        return '%s' % self.name
+        return '<saved_search.SavedSearch object: %s>' % self.name
 
     name = models.CharField(max_length=100, help_text=("""
                                                        A concise and descriptive
