@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django import forms
 
 from directseo.seo.models import BusinessUnit
 from saved_search.models import SavedSearch
@@ -30,5 +31,17 @@ class SavedSearchAdmin(admin.ModelAdmin):
         return str(obj.date_created)
     last_updated.short_description = 'Last Updated'
 
-        
+
+class SavedSearchForm(forms.ModelForm):
+
+    
+    
+    def save(self, request):
+        self.save(commit=False)
+        if blah:
+            do stuff iwth m2m fields
+        self.save()
+    
+
+    
 admin.site.register(SavedSearch, SavedSearchAdmin)

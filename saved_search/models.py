@@ -17,7 +17,7 @@ class SavedSearch(models.Model):
         # self.querystring will not be available as an attribute until
         # post-save. If you call __unicode__ pre-save it will throw
         # an error.
-        return '%s :=> query=[%s]' % (self.name, self.querystring)
+        return '%s' % self.name
 
     name = models.CharField(max_length=100, help_text=("""
                                                        A concise and descriptive
@@ -45,17 +45,16 @@ class SavedSearch(models.Model):
                                         company's job listings. e.g.:
                                         Dental Technician,Office Assistant
                                         """))
+    country_qs = self._make_qs('country', self.country.all())
+    state_qs = self._make_qs('state', self.state.all())
+    city_qs = self._make_qs('city', self.city.all())
+    title_qs = self._make_qs('title', self.title.split(','))
+    keyword_qs = self._make_qs('text', self.keyword.split(','))
+    querystring = self._full_qs()
 
     def save(self, *args, **kwargs):
         super(SavedSearch, self).save(*args, **kwargs)
-        self.country_qs = self._make_qs('country', self.country.all())
-        self.state_qs = self._make_qs('state', self.state.all())
-        self.city_qs = self._make_qs('city', self.city.all())
-        self.title_qs = self._make_qs('title', self.title.split(','))
-        self.keyword_qs = self._make_qs('text', self.keyword.split(','))
-        self.querystring = self._full_qs()
-        super(SavedSearch, self).save(*args, **kwargs)
-        
+
     def _make_qs(self, field, params):
         """
         Generates the query string which will be passed to Solr directly.
@@ -81,7 +80,7 @@ class SavedSearch(models.Model):
                 qs.append('%s:%s' % (field, thing))
             else:
                 qs.append('%s:%s' % (field, thing.name))
-            
+
         return joinstring.join(qs)
 
     def _full_qs(self):
@@ -105,6 +104,3 @@ class SavedSearch(models.Model):
         verbose_name = 'Saved Search'
         verbose_name_plural = 'Saved Searches'
         
-    
-
-    
