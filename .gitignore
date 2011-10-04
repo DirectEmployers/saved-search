@@ -1,3 +1,4 @@
+migrations/
 *.tar.gz
 *.pyc
 locpop.py
