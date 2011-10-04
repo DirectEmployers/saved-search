@@ -45,15 +45,6 @@ class SavedSearch(models.Model):
                                         company's job listings. e.g.:
                                         Dental Technician,Office Assistant
                                         """))
-    country_qs = self._make_qs('country', self.country.all())
-    state_qs = self._make_qs('state', self.state.all())
-    city_qs = self._make_qs('city', self.city.all())
-    title_qs = self._make_qs('title', self.title.split(','))
-    keyword_qs = self._make_qs('text', self.keyword.split(','))
-    querystring = self._full_qs()
-
-    def save(self, *args, **kwargs):
-        super(SavedSearch, self).save(*args, **kwargs)
 
     def _make_qs(self, field, params):
         """
