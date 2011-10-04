@@ -10,7 +10,7 @@ class SavedSearch(models.Model):
 
     """
     def __unicode__(self):
-        return '%s :=> query=[]'
+        return '%s :=> query=[]' % self.name
 
     name = models.CharField(max_length=100, help_text=("""
                                                        A concise and descriptive
@@ -38,22 +38,26 @@ class SavedSearch(models.Model):
                                         company's job listings. e.g.:
                                         Dental Technician,Office Assistant
                                         """))
-
-    def country_qs(self):
-        return "country:%s" % self.country
+    def save(self, *args, **kwargs):
+        self.country_qs = self.make_qs('country', self.country.all())
+        self.state_qs = self.make_qs('state', self.state.all())
+        self.city_qs = self.make_qs('city', self.city.all())
+        self.title_qs = self.make_qs('title', self.title.split(','))
+        self.keyword_qs = self.make_qs('text', self.keyword.split(','))
+        super(SavedSearch, self).save(*args, **kwargs)
         
-    def state_qs(self):
-        return "state:%s" % self.state
-
-    def city_qs(self):
-        return "city:%s" % self.city
-
-    def keyword_qs(self):
-        return "keyword:%s" % self.keyword
-
-    def title_qs(self):
-        return "title:%s" % self.title
-
+    def country_qs(self, field, params):
+        qs = []
+        for thing in params:
+            if field in ('title', 'text'):
+                joinstring = '+AND+'
+                qs.append('%s:%s' % (field, thing))
+            else:
+                joinstring = '+OR+'
+                qs.append('%s:%s' % (field, thing.name))
+            
+        return joinstring.join(qs)
+        
 
     class Meta:
         verbose_name = 'Saved Search'
