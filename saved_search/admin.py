@@ -5,6 +5,10 @@ from directseo.seo.models import BusinessUnit, Country, State, City
 from saved_search.models import SavedSearch
 
 
+class SearchAdmin(admin.AdminSite):
+    pass
+
+    
 class SavedSearchAdmin(admin.ModelAdmin):
     list_display = ('name', 'last_updated', 'keyword', 'title')
     search_fields = ['country__name', 'state__name', 'city__name', 'keyword',
