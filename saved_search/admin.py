@@ -54,15 +54,6 @@ class SavedSearchAdmin(admin.ModelAdmin):
         else:
             return qs.filter(buid__in=request.user.groups.all())
             
-    def formfield_for_manytomany(self, db_field, request, **kwargs):
-        if not request.user.is_superuser:
-            if db_field.name == 'buid':
-                kwargs['queryset'] = BusinessUnit.objects\
-                                                 .filter(user=request.user)
-        return super(SavedSearchAdmin, self).formfield_for_manytomany(db_field,
-                                                                      request,
-                                                                      **kwargs)
-
     def save_model(self, request, obj, form, change):
         new_search = form.save()
         # Since country/state/city fields on the model are M2M fields, and
