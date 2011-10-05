@@ -37,7 +37,7 @@ class SavedSearchForm(forms.ModelForm):
 
     class Meta:
         model = SavedSearch
-        exclude = ("group", "name_slug", "city")
+        exclude = ("group", "name_slug", "city", "querystring")
         
 
 class SavedSearchAdmin(admin.ModelAdmin):
