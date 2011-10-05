@@ -6,12 +6,9 @@ from directseo.seo.models import BusinessUnit, City, Country, State
 
 
 class SavedSearch(models.Model):
-    """
-    
-    
-    """
+
     def __unicode__(self):
-        return '<saved_search.SavedSearch object: %s>' % self.name
+        return '%s' % self.name
 
     name = models.CharField(max_length=100, help_text=("""
                                                        A concise and descriptive
@@ -41,6 +38,7 @@ class SavedSearch(models.Model):
                                         company's job listings. e.g.:
                                         Dental Technician,Office Assistant
                                         """))
+    querystring = models.CharField(max_length=255, null=True, blank=True)
     
     def save(self, *args, **kwargs):
         # Calculate the slug value only on the first save, so that
