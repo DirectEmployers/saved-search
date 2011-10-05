@@ -1,5 +1,10 @@
-from django.contrib import admin
+import simplejson
+
 from django import forms
+from django.contrib import admin
+from django.http import HttpResponse
+from django.shortcuts import render_to_response
+from django.template import RequestContext
 
 from directseo.seo.models import BusinessUnit, Country, State, City
 from saved_search.models import SavedSearch
@@ -27,19 +32,31 @@ class SavedSearchForm(forms.ModelForm):
                                          search on, e.g.:
                                          nursing,phlebotomy
                                           """))
+    locbool = forms.BooleanField(label="Add location filter", required=False)
+    
+    class Meta:
+        model = SavedSearch
+        exclude = ("group", "name_slug", "city", "state", "country",
+                   "querystring")
+
+
+class SavedSearchLocForm(forms.ModelForm):
+    """
+    Sub-form loaded when user checks 'locbool' checkbox on SavedSearchForm.
+    
+    """
     country = forms.ModelMultipleChoiceField(queryset=Country.objects.all(),
                                              required=False, label="Countries")
     state = forms.ModelMultipleChoiceField(queryset=State.objects.all(),
-                                           required=False, label="States")
-    # city = forms.ModelMultipleChoiceField(queryset=City.objects.all(),
-    #                                       required=False, label="Cities")
-    
+                                            required=False, label="States")
+    city = forms.ModelMultipleChoiceField(queryset=City.objects.all(),
+                                          required=False, label="Cities")
 
     class Meta:
         model = SavedSearch
-        exclude = ("group", "name_slug", "city", "querystring")
+        exclude = ("group", "name_slug", "title", "keyword", "name", "locbool")
+    
         
-
 class SavedSearchAdmin(admin.ModelAdmin):
     search_fields = ['country__name', 'state__name', 'city__name', 'keyword',
                      'title']
@@ -47,6 +64,23 @@ class SavedSearchAdmin(admin.ModelAdmin):
     def get_form(self, request, obj=None, **kwargs):
         return SavedSearchForm
 
+    def get_urls(self):
+        # See django docs on get_urls here
+        # https://docs.djangoproject.com/en/dev/ref/contrib/admin/
+        from django.conf.urls.defaults import patterns
+        urls = super(SavedSearchAdmin, self).get_urls()
+        my_urls = patterns('', (r'^ajax_loc/$', self.ajax_loc))
+
+        return my_urls + urls
+
+    def ajax_loc(self, request):
+        country = request.GET.get('country')
+        json = ''
+        if country:
+            states = State.objects.filter(nation=Country.objects.get(pk=country))
+            json = simplejson.dumps(list(states))
+        return HttpResponse(json, mimetype='application/json')
+        
     def queryset(self, request):
         qs = super(SavedSearchAdmin, self).queryset(request)
         if request.user.is_superuser:
