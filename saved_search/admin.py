@@ -89,21 +89,9 @@ class SavedSearchAdmin(admin.ModelAdmin):
             return qs.filter(buid__in=request.user.groups.all())
             
     def save_model(self, request, obj, form, change):
-        new_search = form.save()
-        # Since country/state/city fields on the model are M2M fields, and
-        # the querystring is calculated from these fields, at least in some
-        # cases, we are using this receiver to handle the calculation of the
-        # string.
-        countries = self._make_qs('country', obj.country.all())
-        states = self._make_qs('state', obj.state.all())
-        cities = self._make_qs('city', obj.city.all())
-        keywords = self._make_qs('text', obj.keyword.split(','))
-        titles = self._make_qs('title', obj.title.split(','))
-        n = SavedSearch.objects.get(pk=new_search.pk)
-        n.querystring = self._full_qs(obj, [countries, states, cities,
-                                                     keywords, titles])
-        n.save()
-
+        groups = request.user.groups.all()
+        
+        
     def last_updated(self, obj):
         return str(obj.date_created)
     last_updated.short_description = 'Last Updated'
