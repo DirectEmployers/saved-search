@@ -2,6 +2,7 @@ import simplejson
 
 from django import forms
 from django.contrib import admin
+from django.contrib.auth.admin import GroupAdmin
 from django.http import HttpResponse
 from django.shortcuts import render_to_response
 from django.template import RequestContext
@@ -40,23 +41,14 @@ class SavedSearchForm(forms.ModelForm):
                    "querystring")
 
 
-class SavedSearchLocForm(forms.ModelForm):
-    """
-    Sub-form loaded when user checks 'locbool' checkbox on SavedSearchForm.
-    
-    """
-    country = forms.ModelMultipleChoiceField(queryset=Country.objects.all(),
-                                             required=False, label="Countries")
-    state = forms.ModelMultipleChoiceField(queryset=State.objects.all(),
-                                            required=False, label="States")
-    city = forms.ModelMultipleChoiceField(queryset=City.objects.all(),
-                                          required=False, label="Cities")
+class SearchGroupAdmin(GroupAdmin):
+    def queryset(self, request):
+        qs = super(SavedSearchAdmin, self).queryset(request)
+        if not request.user.is_superuser:
+            qs = qs.filter(buid__in=request.user.groups.all())
 
-    class Meta:
-        model = SavedSearch
-        exclude = ("group", "name_slug", "title", "keyword", "name", "locbool")
+        return qs
     
-        
 class SavedSearchAdmin(admin.ModelAdmin):
     search_fields = ['country__name', 'state__name', 'city__name', 'keyword',
                      'title']
@@ -83,10 +75,10 @@ class SavedSearchAdmin(admin.ModelAdmin):
         
     def queryset(self, request):
         qs = super(SavedSearchAdmin, self).queryset(request)
-        if request.user.is_superuser:
-            return qs
-        else:
-            return qs.filter(buid__in=request.user.groups.all())
+        if not request.user.is_superuser:
+            qs = qs.filter(buid__in=request.user.groups.all())
+
+        return qs
             
     def save_model(self, request, obj, form, change):
         groups = request.user.groups.all()
