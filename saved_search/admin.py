@@ -1,17 +1,26 @@
-import simplejson
-
 from django import forms
 from django.contrib import admin
-from django.contrib.auth.admin import GroupAdmin
-from django.http import HttpResponse
-from django.shortcuts import render_to_response
-from django.template import RequestContext
+from django.contrib.admin import helpers
+from django.contrib.admin.util import unquote
+from django.contrib.auth.models import Group
+from django.core.exceptions import PermissionDenied
+from django.db import transaction, models
+from django.forms.formsets import all_valid
+from django.http import Http404
+from django.utils.encoding import force_unicode
+from django.utils.decorators import method_decorator
+from django.utils.html import escape
+from django.utils.safestring import mark_safe
+from django.utils.translation import ugettext as _
+from django.views.decorators.csrf import csrf_protect
 
-from directseo.seo.models import BusinessUnit, Country, State, City
 from saved_search.models import SavedSearch
+
+csrf_protect_m = method_decorator(csrf_protect)
 
 
 class SavedSearchForm(forms.ModelForm):
+        
     name = forms.CharField(label="Name", required=True,
                            help_text=("""
                                       A concise and descriptive
@@ -34,56 +43,234 @@ class SavedSearchForm(forms.ModelForm):
                                          nursing,phlebotomy
                                           """))
     locbool = forms.BooleanField(label="Add location filter", required=False)
-    
+
+    def __init__(self, data=None, user=None, *args, **kwargs):
+        # It will filter the group based on the user.
+        super(SavedSearchForm, self).__init__(data, *args, **kwargs)
+        groups = [g.id for g in user.groups.all()]
+        qs = Group.objects.filter(id__in=groups)
+        if 'group' not in self.fields:
+            # If the form instance doesn't have the group field, create it
+            # with our dynamic querystring.
+            self.fields['group'] = forms.ModelMultipleChoiceField(queryset=qs)
+        else:
+            # If it does, it will simply set the querystring for the
+            # existing field to our dynamic querystring. Otherwise every
+            # time it is initialized via __init__ its queryset will be
+            # set back to Group.objects.all() which is undesired behavior.
+            self.fields['group'].queryset = qs
+
     class Meta:
         model = SavedSearch
-        exclude = ("group", "name_slug", "city", "state", "country",
+        exclude = ("name_slug", "city", "state", "country",
                    "querystring")
 
 
-class SearchGroupAdmin(GroupAdmin):
-    def queryset(self, request):
-        qs = super(SavedSearchAdmin, self).queryset(request)
-        if not request.user.is_superuser:
-            qs = qs.filter(buid__in=request.user.groups.all())
-
-        return qs
-    
 class SavedSearchAdmin(admin.ModelAdmin):
     search_fields = ['country__name', 'state__name', 'city__name', 'keyword',
                      'title']
 
     def get_form(self, request, obj=None, **kwargs):
         return SavedSearchForm
-
-    def get_urls(self):
-        # See django docs on get_urls here
-        # https://docs.djangoproject.com/en/dev/ref/contrib/admin/
-        from django.conf.urls.defaults import patterns
-        urls = super(SavedSearchAdmin, self).get_urls()
-        my_urls = patterns('', (r'^ajax_loc/$', self.ajax_loc))
-
-        return my_urls + urls
-
-    def ajax_loc(self, request):
-        country = request.GET.get('country')
-        json = ''
-        if country:
-            states = State.objects.filter(nation=Country.objects.get(pk=country))
-            json = simplejson.dumps(list(states))
-        return HttpResponse(json, mimetype='application/json')
         
+    @csrf_protect_m
+    @transaction.commit_on_success
+    def add_view(self, request, form_url='', extra_context=None):
+        "The 'add' admin view for this model."
+        model = self.model
+        opts = model._meta
+
+        if not self.has_add_permission(request):
+            raise PermissionDenied
+
+        ModelForm = SavedSearchForm(user=request.user)
+        formsets = []
+        if request.method == 'POST':
+            form = SavedSearchForm(data=request.POST, user=request.user)
+            if form.is_valid():
+                new_object = self.save_form(request, form, change=False)
+                form_validated = True
+            else:
+                form_validated = False
+                new_object = SavedSearchForm
+            prefixes = {}
+            for FormSet, inline in zip(self.get_formsets(request), self.inline_instances):
+                prefix = FormSet.get_default_prefix()
+                prefixes[prefix] = prefixes.get(prefix, 0) + 1
+                if prefixes[prefix] != 1:
+                    prefix = "%s-%s" % (prefix, prefixes[prefix])
+                formset = FormSet(data=request.POST, files=request.FILES,
+                                  instance=new_object,
+                                  save_as_new=request.POST.has_key("_saveasnew"),
+                                  prefix=prefix, queryset=inline.queryset(request))
+                formsets.append(formset)
+            if all_valid(formsets) and form_validated:
+                self.save_model(request, new_object, form, change=False)
+                form.save_m2m()
+                for formset in formsets:
+                    self.save_formset(request, form, formset, change=False)
+
+                self.log_addition(request, new_object)
+                return self.response_add(request, new_object)
+        else:
+            # Prepare the dict of initial data from the request.
+            # We have to special-case M2Ms as a list of comma-separated PKs.
+            initial = dict(request.GET.items())
+            for k in initial:
+                try:
+                    f = opts.get_field(k)
+                except models.FieldDoesNotExist:
+                    continue
+                if isinstance(f, models.ManyToManyField):
+                    initial[k] = initial[k].split(",")
+            form = ModelForm
+            prefixes = {}
+            for FormSet, inline in zip(self.get_formsets(request),
+                                       self.inline_instances):
+                prefix = FormSet.get_default_prefix()
+                prefixes[prefix] = prefixes.get(prefix, 0) + 1
+                if prefixes[prefix] != 1:
+                    prefix = "%s-%s" % (prefix, prefixes[prefix])
+                formset = FormSet(instance=self.model(), prefix=prefix,
+                                  queryset=inline.queryset(request))
+                formsets.append(formset)
+
+        adminForm = helpers.AdminForm(form, list(self.get_fieldsets(request)),
+            self.prepopulated_fields, self.get_readonly_fields(request),
+            model_admin=self)
+        media = self.media + adminForm.media
+
+        inline_admin_formsets = []
+        for inline, formset in zip(self.inline_instances, formsets):
+            fieldsets = list(inline.get_fieldsets(request))
+            readonly = list(inline.get_readonly_fields(request))
+            inline_admin_formset = helpers.InlineAdminFormSet(inline, formset,
+                fieldsets, readonly, model_admin=self)
+            inline_admin_formsets.append(inline_admin_formset)
+            media = media + inline_admin_formset.media
+
+        context = {
+            'title': _('Add %s') % force_unicode(opts.verbose_name),
+            'adminform': adminForm,
+            'is_popup': request.REQUEST.has_key('_popup'),
+            'show_delete': False,
+            'media': mark_safe(media),
+            'inline_admin_formsets': inline_admin_formsets,
+            'errors': helpers.AdminErrorList(form, formsets),
+            'root_path': self.admin_site.root_path,
+            'app_label': opts.app_label,
+        }
+        context.update(extra_context or {})
+        return self.render_change_form(request, context, form_url=form_url, add=True)
+    @csrf_protect_m
+    @transaction.commit_on_success
+    def change_view(self, request, object_id, extra_context=None):
+        import ipdb
+        ipdb.set_trace()
+        "The 'change' admin view for this model."
+        model = self.model
+        opts = model._meta
+
+        obj = self.get_object(request, unquote(object_id))
+
+        if not self.has_change_permission(request, obj):
+            raise PermissionDenied
+
+        if obj is None:
+            raise Http404(_('%(name)s object with primary key %(key)r does not exist.') % {'name': force_unicode(opts.verbose_name), 'key': escape(object_id)})
+
+        if request.method == 'POST' and request.POST.has_key("_saveasnew"):
+            return self.add_view(request, form_url='../add/')
+
+        ModelForm = SavedSearchForm(user=request.user, instance=obj)
+        formsets = []
+        if request.method == 'POST':
+            form = SavedSearchForm(data=request.POST, user=request.user)
+            if form.is_valid():
+                form_validated = True
+                new_object = self.save_form(request, form, change=True)
+            else:
+                form_validated = False
+                new_object = obj
+            prefixes = {}
+            for FormSet, inline in zip(self.get_formsets(request, new_object),
+                                       self.inline_instances):
+                prefix = FormSet.get_default_prefix()
+                prefixes[prefix] = prefixes.get(prefix, 0) + 1
+                if prefixes[prefix] != 1:
+                    prefix = "%s-%s" % (prefix, prefixes[prefix])
+                formset = FormSet(request.POST, request.FILES,
+                                  instance=new_object, prefix=prefix,
+                                  queryset=inline.queryset(request))
+
+                formsets.append(formset)
+
+            if all_valid(formsets) and form_validated:
+                self.save_model(request, new_object, form, change=True)
+                form.save_m2m()
+                for formset in formsets:
+                    self.save_formset(request, form, formset, change=True)
+
+                change_message = self.construct_change_message(request, form, formsets)
+                self.log_change(request, new_object, change_message)
+                return self.response_change(request, new_object)
+
+        else:
+            form = ModelForm
+            prefixes = {}
+            for FormSet, inline in zip(self.get_formsets(request, obj), self.inline_instances):
+                prefix = FormSet.get_default_prefix()
+                prefixes[prefix] = prefixes.get(prefix, 0) + 1
+                if prefixes[prefix] != 1:
+                    prefix = "%s-%s" % (prefix, prefixes[prefix])
+                formset = FormSet(instance=obj, prefix=prefix,
+                                  queryset=inline.queryset(request))
+                formsets.append(formset)
+
+        adminForm = helpers.AdminForm(form, self.get_fieldsets(request, obj),
+            self.prepopulated_fields, self.get_readonly_fields(request, obj),
+            model_admin=self)
+        media = self.media + adminForm.media
+
+        inline_admin_formsets = []
+        for inline, formset in zip(self.inline_instances, formsets):
+            fieldsets = list(inline.get_fieldsets(request, obj))
+            readonly = list(inline.get_readonly_fields(request, obj))
+            inline_admin_formset = helpers.InlineAdminFormSet(inline, formset,
+                fieldsets, readonly, model_admin=self)
+            inline_admin_formsets.append(inline_admin_formset)
+            media = media + inline_admin_formset.media
+
+        context = {
+            'title': _('Change %s') % force_unicode(opts.verbose_name),
+            'adminform': adminForm,
+            'object_id': object_id,
+            'original': obj,
+            'is_popup': request.REQUEST.has_key('_popup'),
+            'media': mark_safe(media),
+            'inline_admin_formsets': inline_admin_formsets,
+            'errors': helpers.AdminErrorList(form, formsets),
+            'root_path': self.admin_site.root_path,
+            'app_label': opts.app_label,
+        }
+        context.update(extra_context or {})
+        return self.render_change_form(request, context, change=True, obj=obj)
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        if db_field.name == 'group':
+            groups = request.user.groups.all()
+            kwargs['queryset'] = Group.objects.filter(id__in=groups)
+        return super(SavedSearchAdmin, self).formfield_for_manytomany(db_field,
+                                                                      request,
+                                                                      **kwargs)
+
     def queryset(self, request):
         qs = super(SavedSearchAdmin, self).queryset(request)
         if not request.user.is_superuser:
-            qs = qs.filter(buid__in=request.user.groups.all())
+            qs = qs.filter(group__in=request.user.groups.all())
 
         return qs
             
-    def save_model(self, request, obj, form, change):
-        groups = request.user.groups.all()
-        
-        
     def last_updated(self, obj):
         return str(obj.date_created)
     last_updated.short_description = 'Last Updated'

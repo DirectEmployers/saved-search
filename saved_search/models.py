@@ -46,12 +46,12 @@ class SavedSearch(models.Model):
         if not self.id:
             self.name_slug = slugify(self.name)
 
-        countries = self._make_qs('country', obj.country.all())
-        states = self._make_qs('state', obj.state.all())
-        cities = self._make_qs('city', obj.city.all())
-        keywords = self._make_qs('text', obj.keyword.split(','))
-        titles = self._make_qs('title', obj.title.split(','))
-        self.querystring = self._full_qs(obj, [countries, states, cities,
+        countries = self._make_qs('country', self.country)
+        states = self._make_qs('state', self.state)
+        cities = self._make_qs('city', self.city)
+        keywords = self._make_qs('text', self.keyword)
+        titles = self._make_qs('title', self.title)
+        self.querystring = self._full_qs(self, [countries, states, cities,
                                                keywords, titles])
         super(SavedSearch, self).save(*args, **kwargs)
     
@@ -63,6 +63,8 @@ class SavedSearch(models.Model):
         # If no parameter was passed in, immediately dump back out.
         if not params:
             return ''
+
+        params = params.split(',')
         qs = []
         # All fields except full-text search, i.e. keyword search, are
         # sought disjunctively. In other words, if user wants all jobs
