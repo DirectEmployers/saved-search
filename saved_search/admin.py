@@ -49,25 +49,24 @@ class SavedSearchForm(forms.ModelForm):
     def __init__(self, data=None, user=None, *args, **kwargs):
         # It will filter the group based on the user.
         super(SavedSearchForm, self).__init__(data, *args, **kwargs)
-        import ipdb
-        ipdb.set_trace()
-        groups = [g.id for g in user.groups.all()]
-        grp_qs = Group.objects.filter(id__in=groups)
-        site_ids = []
-        for group in grp_qs:
-            site_ids += [s.id for s in group.seosite_set.all()]
-
-        site_qs = SeoSite.objects.filter(id__in=site_ids)
-        if 'site' not in self.fields:
-            # If the form instance doesn't have the group field, create it
-            # with our dynamic querystring.
-            self.fields['site'] = forms.ModelMultipleChoiceField(queryset=site_qs)
-        else:
-            # If it does, it will simply set the querystring for the
-            # existing field to our dynamic querystring. Otherwise every
-            # time it is initialized via __init__ its queryset will be
-            # set back to Group.objects.all() which is undesired behavior.
-            self.fields['site'].queryset = site_qs
+        if not user.is_superuser:
+            groups = [g.id for g in user.groups.all()]
+            grp_qs = Group.objects.filter(id__in=groups)
+            site_ids = []
+            for group in grp_qs:
+                site_ids += [s.id for s in group.seosite_set.all()]
+                
+                sites = SeoSite.objects.filter(id__in=site_ids)
+                if 'site' not in self.fields:
+                    self.fields['site'] = forms.ModelMultipleChoiceField(
+                        queryset=sites)
+                else:
+                    # If the form already has the 'site' field, it will simply
+                    # set the querystring for the existing field to our dynamic
+                    # querystring. Otherwise every time it is initialized via
+                    # __init__ its queryset will be set back to
+                    # Group.objects.all() which is undesired behavior.
+                    self.fields['site'].queryset = sites
 
     class Meta:
         model = SavedSearch
@@ -76,12 +75,12 @@ class SavedSearchForm(forms.ModelForm):
 
 
 class SavedSearchAdmin(admin.ModelAdmin):
-    search_fields = ['country__name', 'state__name', 'city__name', 'keyword',
-                     'title']
+    search_fields = ['country', 'state', 'city', 'keyword', 'title',
+                     'site__name']
 
     def get_form(self, request, obj=None, **kwargs):
         return SavedSearchForm
-        
+
     @csrf_protect_m
     @transaction.commit_on_success
     def add_view(self, request, form_url='', extra_context=None):
@@ -98,12 +97,14 @@ class SavedSearchAdmin(admin.ModelAdmin):
             if form.is_valid():
                 new_object = self.save_form(request, form, change=False)
                 form.save()
+                form.cleaned_data['group'] = [s.group for s in
+                                              form.cleaned_data['site']]
                 form.save_m2m()
                 self.log_addition(request, new_object)
                 return self.response_add(request, new_object)
             else:
                 form_validated = False
-                new_object = SavedSearchForm
+                new_object = form
                 
         else:
             # Prepare the dict of initial data from the request.
@@ -195,14 +196,6 @@ class SavedSearchAdmin(admin.ModelAdmin):
         context.update(extra_context or {})
         return self.render_change_form(request, context, change=True, obj=obj)
 
-    def formfield_for_manytomany(self, db_field, request, **kwargs):
-        if db_field.name == 'group':
-            groups = request.user.groups.all()
-            kwargs['queryset'] = Group.objects.filter(id__in=groups)
-        return super(SavedSearchAdmin, self).formfield_for_manytomany(db_field,
-                                                                      request,
-                                                                      **kwargs)
-
     def queryset(self, request):
         qs = super(SavedSearchAdmin, self).queryset(request)
         if not request.user.is_superuser:
@@ -265,3 +258,4 @@ class SavedSearchAdmin(admin.ModelAdmin):
 
 
 admin.site.register(SavedSearch, SavedSearchAdmin)
+
