@@ -207,32 +207,10 @@ class SavedSearchAdmin(admin.ModelAdmin):
                 self.log_change(request, new_object, change_message)
                 return self.response_change(request, new_object)
 
-        else:
-            form = ModelForm
-            prefixes = {}
-            for FormSet, inline in zip(self.get_formsets(request, obj),
-                                       self.inline_instances):
-                prefix = FormSet.get_default_prefix()
-                prefixes[prefix] = prefixes.get(prefix, 0) + 1
-                if prefixes[prefix] != 1:
-                    prefix = "%s-%s" % (prefix, prefixes[prefix])
-                formset = FormSet(instance=obj, prefix=prefix,
-                                  queryset=inline.queryset(request))
-                formsets.append(formset)
-
         adminForm = helpers.AdminForm(form, self.get_fieldsets(request, obj),
             self.prepopulated_fields, self.get_readonly_fields(request, obj),
             model_admin=self)
         media = self.media + adminForm.media
-
-        inline_admin_formsets = []
-        for inline, formset in zip(self.inline_instances, formsets):
-            fieldsets = list(inline.get_fieldsets(request, obj))
-            readonly = list(inline.get_readonly_fields(request, obj))
-            inline_admin_formset = helpers.InlineAdminFormSet(inline, formset,
-                fieldsets, readonly, model_admin=self)
-            inline_admin_formsets.append(inline_admin_formset)
-            media = media + inline_admin_formset.media
 
         context = {
             'title': _('Change %s') % force_unicode(opts.verbose_name),
