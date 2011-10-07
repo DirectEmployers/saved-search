@@ -2,7 +2,7 @@ from django.contrib.auth.models import User, Group
 from django.db import models
 from django.template.defaultfilters import slugify
 
-from directseo.seo.models import BusinessUnit, City, Country, State
+from directseo.seo.models import BusinessUnit, City, Country, State, SeoSite
 
 
 class SavedSearch(models.Model):
@@ -20,6 +20,7 @@ class SavedSearch(models.Model):
                                                        """))
     name_slug = models.SlugField(max_length=100, blank=True, null=True)
     group = models.ManyToManyField(Group, blank=True, null=True)
+    site = models.ManyToManyField(SeoSite, blank=False, null=True)
     date_created = models.DateField(auto_now=True)
     country = models.CharField(max_length=255, null=True, blank=True)
     state = models.CharField(max_length=255, null=True, blank=True)
