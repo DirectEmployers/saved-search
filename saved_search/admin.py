@@ -14,6 +14,8 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
 from django.views.decorators.csrf import csrf_protect
 
+from directseo.seo.models import SeoSite
+
 from saved_search.models import SavedSearch
 
 csrf_protect_m = method_decorator(csrf_protect)
@@ -47,23 +49,30 @@ class SavedSearchForm(forms.ModelForm):
     def __init__(self, data=None, user=None, *args, **kwargs):
         # It will filter the group based on the user.
         super(SavedSearchForm, self).__init__(data, *args, **kwargs)
+        import ipdb
+        ipdb.set_trace()
         groups = [g.id for g in user.groups.all()]
-        qs = Group.objects.filter(id__in=groups)
-        if 'group' not in self.fields:
+        grp_qs = Group.objects.filter(id__in=groups)
+        site_ids = []
+        for group in grp_qs:
+            site_ids += [s.id for s in group.seosite_set.all()]
+
+        site_qs = SeoSite.objects.filter(id__in=site_ids)
+        if 'site' not in self.fields:
             # If the form instance doesn't have the group field, create it
             # with our dynamic querystring.
-            self.fields['group'] = forms.ModelMultipleChoiceField(queryset=qs)
+            self.fields['site'] = forms.ModelMultipleChoiceField(queryset=site_qs)
         else:
             # If it does, it will simply set the querystring for the
             # existing field to our dynamic querystring. Otherwise every
             # time it is initialized via __init__ its queryset will be
             # set back to Group.objects.all() which is undesired behavior.
-            self.fields['group'].queryset = qs
+            self.fields['site'].queryset = site_qs
 
     class Meta:
         model = SavedSearch
         exclude = ("name_slug", "city", "state", "country",
-                   "querystring")
+                   "querystring", "group")
 
 
 class SavedSearchAdmin(admin.ModelAdmin):
@@ -90,11 +99,11 @@ class SavedSearchAdmin(admin.ModelAdmin):
                 new_object = self.save_form(request, form, change=False)
                 form.save()
                 form.save_m2m()
+                self.log_addition(request, new_object)
+                return self.response_add(request, new_object)
             else:
                 form_validated = False
                 new_object = SavedSearchForm
-                self.log_addition(request, new_object)
-                return self.response_add(request, new_object)
                 
         else:
             # Prepare the dict of initial data from the request.
