@@ -189,7 +189,7 @@ class SavedSearchAdmin(admin.ModelAdmin):
         if request.method == 'POST' and request.POST.has_key("_saveasnew"):
             return self.add_view(request, form_url='../add/')
 
-        ModelForm = SavedSearchForm(user=request.user, instance=obj)
+        form = SavedSearchForm(user=request.user, instance=obj)
         if request.method == 'POST':
             form = SavedSearchForm(data=request.POST, user=request.user,
                                    instance=obj)
@@ -219,8 +219,8 @@ class SavedSearchAdmin(admin.ModelAdmin):
             'original': obj,
             'is_popup': request.REQUEST.has_key('_popup'),
             'media': mark_safe(media),
-            'inline_admin_formsets': inline_admin_formsets,
-            'errors': helpers.AdminErrorList(form, formsets),
+            'inline_admin_formsets': [],
+            'errors': helpers.AdminErrorList(form, []),
             'root_path': self.admin_site.root_path,
             'app_label': opts.app_label,
         }
