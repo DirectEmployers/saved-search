@@ -94,7 +94,8 @@ class SavedSearchAdmin(admin.ModelAdmin):
                 form_validated = False
                 new_object = SavedSearchForm
             prefixes = {}
-            for FormSet, inline in zip(self.get_formsets(request), self.inline_instances):
+            for FormSet, inline in zip(self.get_formsets(request),
+                                       self.inline_instances):
                 prefix = FormSet.get_default_prefix()
                 prefixes[prefix] = prefixes.get(prefix, 0) + 1
                 if prefixes[prefix] != 1:
@@ -102,7 +103,8 @@ class SavedSearchAdmin(admin.ModelAdmin):
                 formset = FormSet(data=request.POST, files=request.FILES,
                                   instance=new_object,
                                   save_as_new=request.POST.has_key("_saveasnew"),
-                                  prefix=prefix, queryset=inline.queryset(request))
+                                  prefix=prefix,
+                                  queryset=inline.queryset(request))
                 formsets.append(formset)
             if all_valid(formsets) and form_validated:
                 self.save_model(request, new_object, form, change=False)
@@ -161,7 +163,9 @@ class SavedSearchAdmin(admin.ModelAdmin):
             'app_label': opts.app_label,
         }
         context.update(extra_context or {})
-        return self.render_change_form(request, context, form_url=form_url, add=True)
+        return self.render_change_form(request, context, form_url=form_url,
+                                       add=True)
+        
     @csrf_protect_m
     @transaction.commit_on_success
     def change_view(self, request, object_id, extra_context=None):
@@ -177,48 +181,37 @@ class SavedSearchAdmin(admin.ModelAdmin):
             raise PermissionDenied
 
         if obj is None:
-            raise Http404(_('%(name)s object with primary key %(key)r does not exist.') % {'name': force_unicode(opts.verbose_name), 'key': escape(object_id)})
+            raise Http404(_('%(name)s object with primary key %(key)r does not'
+                            ' exist.') %
+                          {'name': force_unicode(opts.verbose_name),
+                           'key': escape(object_id)})
 
         if request.method == 'POST' and request.POST.has_key("_saveasnew"):
             return self.add_view(request, form_url='../add/')
 
         ModelForm = SavedSearchForm(user=request.user, instance=obj)
-        formsets = []
         if request.method == 'POST':
-            form = SavedSearchForm(data=request.POST, user=request.user)
+            form = SavedSearchForm(data=request.POST, user=request.user,
+                                   instance=obj)
             if form.is_valid():
                 form_validated = True
                 new_object = self.save_form(request, form, change=True)
             else:
                 form_validated = False
                 new_object = obj
-            prefixes = {}
-            for FormSet, inline in zip(self.get_formsets(request, new_object),
-                                       self.inline_instances):
-                prefix = FormSet.get_default_prefix()
-                prefixes[prefix] = prefixes.get(prefix, 0) + 1
-                if prefixes[prefix] != 1:
-                    prefix = "%s-%s" % (prefix, prefixes[prefix])
-                formset = FormSet(request.POST, request.FILES,
-                                  instance=new_object, prefix=prefix,
-                                  queryset=inline.queryset(request))
 
-                formsets.append(formset)
-
-            if all_valid(formsets) and form_validated:
-                self.save_model(request, new_object, form, change=True)
+            if form_validated:
+                form.save()
                 form.save_m2m()
-                for formset in formsets:
-                    self.save_formset(request, form, formset, change=True)
-
-                change_message = self.construct_change_message(request, form, formsets)
+                change_message = self.construct_change_message(request, form, [])
                 self.log_change(request, new_object, change_message)
                 return self.response_change(request, new_object)
 
         else:
             form = ModelForm
             prefixes = {}
-            for FormSet, inline in zip(self.get_formsets(request, obj), self.inline_instances):
+            for FormSet, inline in zip(self.get_formsets(request, obj),
+                                       self.inline_instances):
                 prefix = FormSet.get_default_prefix()
                 prefixes[prefix] = prefixes.get(prefix, 0) + 1
                 if prefixes[prefix] != 1:
