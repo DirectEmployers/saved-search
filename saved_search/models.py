@@ -2,6 +2,8 @@ from django.contrib.auth.models import User, Group
 from django.db import models
 from django.template.defaultfilters import slugify
 
+from haystack.query import SearchQuerySet
+
 from directseo.seo.models import BusinessUnit, City, Country, State, SeoSite
 
 
@@ -20,7 +22,7 @@ class SavedSearch(models.Model):
                                                        """))
     name_slug = models.SlugField(max_length=100, blank=True, null=True)
     group = models.ManyToManyField(Group, blank=True, null=True)
-    site = models.ManyToManyField(SeoSite, blank=False, null=True)
+    site = models.ForeignKey(SeoSite, blank=False, null=True)
     date_created = models.DateField(auto_now=True)
     country = models.CharField(max_length=255, null=True, blank=True)
     state = models.CharField(max_length=255, null=True, blank=True)
@@ -52,8 +54,10 @@ class SavedSearch(models.Model):
         cities = self._make_qs('city', self.city)
         keywords = self._make_qs('text', self.keyword)
         titles = self._make_qs('title', self.title)
+        buids = self._make_qs('buid', ','.join([str(b.id) for b in
+                                               self.site.business_units.all()]))
         self.querystring = self._full_qs(self, [countries, states, cities,
-                                               keywords, titles])
+                                                keywords, titles, buids])
         super(SavedSearch, self).save(*args, **kwargs)
 
     def get_sqs(self):
@@ -62,7 +66,8 @@ class SavedSearch(models.Model):
         when passed to the Solr backend.
 
         """
-        return SearchQuerySet().raw_search(self.querystring)
+        sqs = SearchQuerySet()
+        return sqs.raw_search(self.querystring)
         
     def _make_qs(self, field, params):
         """
@@ -83,16 +88,14 @@ class SavedSearch(models.Model):
         # in ALL of those cities together. The difference between spoken
         # English and logical syntax.
         joinstring = ' OR '
-        if field == 'text':
-            joinstring = ' AND '
             
         for thing in params:
-            if field in ('title', 'text'):
+            if field in ('title', 'text', 'buid'):
                 qs.append('%s:%s' % (field, thing))
             else:
                 qs.append('%s:%s' % (field, thing.name))
 
-        return joinstring.join(qs)  
+        return '(' + joinstring.join(qs) + ')'
     
     def _full_qs(self, instance, fields):
         """
