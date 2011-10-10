@@ -8,6 +8,21 @@ from directseo.seo.models import BusinessUnit, City, Country, State, SeoSite
 
 
 class SavedSearch(models.Model):
+    """
+    This model is a glorified string manipulation object. It takes a bunch
+    of user input and calculates it into a querystring, then uses that
+    querystring to return a SearchQuerySet object.
+
+    Each SavedSearch object has a foreign key to an SeoSite object. This
+    means that in order to create the same saved search across many SEO
+    sites, the user will have to copy the saved search once for each site.
+
+    This is made a bit easier by setting save_as == True in the ModelAdmin
+    for this model. This allows the user to change the SEO site from the
+    FK drop-down, then click "Save as New" to create a new Saved Search
+    instance.
+    
+    """
 
     def __unicode__(self):
         return '%s' % self.name
