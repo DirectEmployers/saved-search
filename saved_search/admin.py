@@ -80,6 +80,7 @@ class SavedSearchAdmin(admin.ModelAdmin):
     search_fields = ['country', 'state', 'city', 'keyword', 'title',
                      'site__name']
     list_display = ('name', 'last_updated', 'results')
+    save_as = True
 
     def get_form(self, request, obj=None, **kwargs):
         return SavedSearchForm
