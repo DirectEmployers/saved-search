@@ -3,10 +3,12 @@ from django.contrib import admin
 from django.contrib.admin import helpers
 from django.contrib.admin.util import unquote
 from django.contrib.auth.models import Group
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.db import transaction, models
 from django.forms.formsets import all_valid
 from django.http import Http404
+from django.template.defaultfilters import slugify
 from django.utils.encoding import force_unicode
 from django.utils.decorators import method_decorator
 from django.utils.html import escape
@@ -77,6 +79,7 @@ class SavedSearchForm(forms.ModelForm):
 class SavedSearchAdmin(admin.ModelAdmin):
     search_fields = ['country', 'state', 'city', 'keyword', 'title',
                      'site__name']
+    list_display = ('name', 'last_updated', 'results')
 
     def get_form(self, request, obj=None, **kwargs):
         return SavedSearchForm
@@ -202,7 +205,16 @@ class SavedSearchAdmin(admin.ModelAdmin):
             qs = qs.filter(group__in=request.user.groups.all())
 
         return qs
-            
+
+    def results(self, obj):
+        cache_key = 'savedsearch_count:%s' % obj.id
+        results_count = cache.get(cache_key)
+        if not results_count:
+            results_count = obj.get_sqs().count()
+            cache.set(cache_key, results_count, 600)
+        return results_count
+    results.short_description = 'Results Count'
+        
     def last_updated(self, obj):
         return str(obj.date_created)
     last_updated.short_description = 'Last Updated'
