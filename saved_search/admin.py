@@ -101,8 +101,7 @@ class SavedSearchAdmin(admin.ModelAdmin):
             if form.is_valid():
                 new_object = self.save_form(request, form, change=False)
                 form.save()
-                form.cleaned_data['group'] = [s.group for s in
-                                              form.cleaned_data['site']]
+                form.cleaned_data['group'] = [form.cleaned_data['site'].group]
                 form.save_m2m()
                 self.log_addition(request, new_object)
                 return self.response_add(request, new_object)

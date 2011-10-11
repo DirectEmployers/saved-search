@@ -61,9 +61,7 @@ class SavedSearch(models.Model):
     def save(self, *args, **kwargs):
         # Calculate the slug value only on the first save, so that
         # any dependent URLs do not change.
-        if not self.id:
-            self.name_slug = slugify(self.name)
-
+        self.name_slug = slugify(self.name)
         countries = self._make_qs('country', self.country)
         states = self._make_qs('state', self.state)
         cities = self._make_qs('city', self.city)
@@ -81,8 +79,8 @@ class SavedSearch(models.Model):
         when passed to the Solr backend.
 
         """
-        sqs = SearchQuerySet()
-        return sqs.raw_search(self.querystring)
+        sqs = SearchQuerySet().narrow(self.querystring)
+        return sqs
         
     def _make_qs(self, field, params):
         """
@@ -110,7 +108,7 @@ class SavedSearch(models.Model):
             else:
                 qs.append('%s:%s' % (field, thing.name))
 
-        return '(' + joinstring.join(qs) + ')'
+        return joinstring.join(qs)
     
     def _full_qs(self, instance, fields):
         """
