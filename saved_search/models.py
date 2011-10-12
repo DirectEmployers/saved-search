@@ -27,14 +27,12 @@ class SavedSearch(models.Model):
     def __unicode__(self):
         return '%s' % self.name
 
-    name = models.CharField(max_length=100, help_text=("""
-                                                       A concise and descriptive
-                                                       name for this saved
-                                                       search, e.g.:
-                                                       Nursing Jobs,
-                                                       Tech Support Jobs in
-                                                       Texas
-                                                       """))
+    name = models.CharField(max_length=100,
+                            help_text=("""
+                                       A concise and descriptive name for this
+                                       saved search, e.g.: Nursing Jobs, Tech
+                                       Support Jobs in Texas
+                                       """))
     name_slug = models.SlugField(max_length=100, blank=True, null=True)
     group = models.ManyToManyField(Group, blank=True, null=True)
     site = models.ForeignKey(SeoSite, blank=False, null=True)
@@ -78,7 +76,7 @@ class SavedSearch(models.Model):
         when passed to the Solr backend.
 
         """
-        sqs = SearchQuerySet().narrow(self.querystring)
+        sqs = SearchQuerySet().narrow(self.querystring).load_all()
         return sqs
         
     def _make_qs(self, field, params):
