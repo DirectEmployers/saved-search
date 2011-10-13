@@ -55,7 +55,7 @@ class SavedSearch(models.Model):
                                         Dental Technician,Office Assistant
                                         """))
     querystring = models.CharField(max_length=255, null=True, blank=True)
-    urlslab = models.CharField(max_length=255, null=True, blank=True)
+    url = models.CharField(max_length=255, null=True, blank=True)
 
     def clean(self):
         countries = self._make_qs('country', self.country)
@@ -68,7 +68,7 @@ class SavedSearch(models.Model):
         self.querystring = self._full_qs(self, [countries, states, cities,
                                                 keywords, titles, buids])
         self.name_slug = slugify(self.name)
-        self.urlslab = '%s/new-jobs' % self.name_slug
+        self.url = '%s/new-jobs' % self.name_slug
         
     def get_sqs(self):
         """
