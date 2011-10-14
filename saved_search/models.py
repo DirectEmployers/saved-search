@@ -71,7 +71,7 @@ class SavedSearch(models.Model):
         self.querystring = self._full_qs(self, [countries, states, cities,
                                                 keywords, titles, buids])
         self.name_slug = slugify(self.name)
-        self.url = '%s/new-jobs' % self.name_slug
+        self.url_slab = '%s/new-jobs::%s' % (self.name_slug, self.name)
         
     def get_sqs(self):
         """
