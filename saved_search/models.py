@@ -55,7 +55,10 @@ class SavedSearch(models.Model):
                                         Dental Technician,Office Assistant
                                         """))
     querystring = models.CharField(max_length=255, null=True, blank=True)
-    url = models.CharField(max_length=255, null=True, blank=True)
+    url_slab = models.CharField(max_length=255, null=True, blank=True)
+    blurb = models.TextField(null=True, blank=True)
+    show_blurb = models.BooleanField("Use Saved Search Blurb", default=True)
+    show_production = models.BooleanField("Show in Production", default=False)
 
     def clean(self):
         countries = self._make_qs('country', self.country)
