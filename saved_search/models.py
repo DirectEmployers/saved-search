@@ -34,8 +34,8 @@ class SavedSearch(models.Model):
                                        Support Jobs in Texas
                                        """))
     name_slug = models.SlugField(max_length=100, blank=True, null=True)
-    group = models.ManyToManyField(Group, blank=True, null=True)
-    site = models.ForeignKey(SeoSite, blank=False, null=True)
+    group = models.ForeignKey(Group, blank=True, null=True)
+    site = models.ManyToManyField(SeoSite, blank=False, null=True)
     date_created = models.DateField(auto_now=True)
     country = models.CharField(max_length=255, null=True, blank=True)
     state = models.CharField(max_length=255, null=True, blank=True)

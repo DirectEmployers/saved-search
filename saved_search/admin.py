@@ -46,7 +46,14 @@ class SavedSearchForm(forms.ModelForm):
                                          search on, e.g.:
                                          nursing,phlebotomy
                                           """))
-    locbool = forms.BooleanField(label="Add location filter", required=False)
+
+    location = forms.CharField(label="Location", required=False,
+                               help_text=("""
+                                          Type in the name of a country, state,
+                                          region, city, etc., to search on, e.g.
+                                          "New Delhi", "Canada", "Florida"
+                                          """))
+    
 
     def __init__(self, data=None, user=None, *args, **kwargs):
         # It will filter the group based on the user.
@@ -72,7 +79,8 @@ class SavedSearchForm(forms.ModelForm):
 
     class Meta:
         model = SavedSearch
-        exclude = ("name_slug", "querystring", "group", "url_slab")
+        exclude = ("name_slug", "querystring", "group", "url_slab", "country",
+                   "city", "state")
 
 
 class SavedSearchAdmin(admin.ModelAdmin):
