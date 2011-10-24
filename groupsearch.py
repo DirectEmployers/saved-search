@@ -1,0 +1,1 @@
+Django-Haystack-Group-Search/groupsearch.py
