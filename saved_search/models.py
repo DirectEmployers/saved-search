@@ -1,10 +1,17 @@
+import re
+
 from django.contrib.auth.models import User, Group
 from django.db import models
 from django.template.defaultfilters import slugify
 
 from haystack.query import SearchQuerySet
 
-from directseo.seo.models import BusinessUnit, City, Country, State, SeoSite
+from directseo.seo.models import (jobListing, BusinessUnit, City, Country,
+                                  State, SeoSite)
+
+
+SOLR_ESCAPE_CHARS = ['+', '-', '&&', '||', '!', '(', ')', '{', '}', '[', ']',
+                     '^', '"', '~', '*', '?']
 
 
 class SavedSearch(models.Model):
@@ -37,16 +44,16 @@ class SavedSearch(models.Model):
     group = models.ForeignKey(Group, blank=True, null=True)
     site = models.ManyToManyField(SeoSite, blank=False, null=True)
     date_created = models.DateField(auto_now=True)
-    country = models.CharField(max_length=255, null=True, blank=True)
-    state = models.CharField(max_length=255, null=True, blank=True)
-    city = models.CharField(max_length=255, null=True, blank=True)
-    keyword = models.CharField(max_length=255, null=True, blank=True,
+    country = models.CharField(max_length=800, null=True, blank=True)
+    state = models.CharField(max_length=800, null=True, blank=True)
+    city = models.CharField(max_length=800, null=True, blank=True)
+    keyword = models.CharField(max_length=800, null=True, blank=True,
                                help_text=("""
                                           A comma-separated list of keywords to
                                           search on, e.g.:
                                           nursing,phlebotomy
                                           """))
-    title = models.CharField(max_length=255, null=True, blank=True,
+    title = models.CharField(max_length=800, null=True, blank=True,
                              help_text=("""
                                         A comma-separated list of job titles to
                                         search on. Terms entered here will refer
@@ -54,7 +61,7 @@ class SavedSearch(models.Model):
                                         company's job listings. e.g.:
                                         Dental Technician,Office Assistant
                                         """))
-    querystring = models.CharField(max_length=255, null=True, blank=True)
+    querystring = models.CharField(max_length=2000, null=True, blank=True)
     url_slab = models.CharField(max_length=255, null=True, blank=True)
     blurb = models.TextField(null=True, blank=True)
     show_blurb = models.BooleanField("Use Saved Search Blurb", default=True)
@@ -64,12 +71,17 @@ class SavedSearch(models.Model):
         countries = self._make_qs('country', self.country)
         states = self._make_qs('state', self.state)
         cities = self._make_qs('city', self.city)
-        keywords = self._make_qs('text', self.keyword)
         titles = self._make_qs('title', self.title)
-        buids = self._make_qs('buid', ','.join([str(b.id) for b in
-                                               self.site.business_units.all()]))
+        bu = [s.business_units.all() for s in self.site.all()]
+        # Create a single BusinessUnit out of the list of BusinessUnits
+        # returned by the list comprehension on the previous line, if
+        # it is a non-empty list.
+        if bu:
+            bu = ','.join([str(b.id) for b in reduce(lambda x,y: x|y, bu)])
+
+        buids = self._make_qs('buid', bu)
         self.querystring = self._full_qs(self, [countries, states, cities,
-                                                keywords, titles, buids])
+                                                titles, buids])
         self.name_slug = slugify(self.name)
         self.url_slab = '%s/new-jobs::%s' % (self.name_slug, self.name)
         
@@ -79,8 +91,37 @@ class SavedSearch(models.Model):
         when passed to the Solr backend.
 
         """
-        sqs = SearchQuerySet().narrow(self.querystring).load_all()
+        keywords = self._keyword_sq(self.keyword)
+        sqs = SearchQuerySet().models(jobListing).narrow(self.querystring)
+        for kw in keywords:
+            sqs = sqs.filter(content=kw)
         return sqs
+
+    def _keyword_sq(self, keyword):
+        """
+        Handles the obj.keyword paramater since we need explicitly to consume
+        this value with a .filter() call. This method will automatically
+        seek exact match if there is one or more spaces in the value.
+        
+        """
+        params = keyword.split(',')
+        for param in params:
+            p = param
+            param = self._escape(param)
+            if "#@#" in param:
+                params.remove(p)
+                params += param.split("#@#")
+            else:
+                params[params.index(p)] = param.strip(' ')
+
+        return params
+
+    def _escape(self, param):
+        for c in SOLR_ESCAPE_CHARS:
+            param = param.replace(c, '')
+        param = param.replace(':', "\\:")
+
+        return param
         
     def _make_qs(self, field, params):
         """
@@ -92,6 +133,7 @@ class SavedSearch(models.Model):
             return ''
 
         params = params.split(',')
+
         qs = []
         # All fields except full-text search, i.e. keyword search, are
         # sought disjunctively. In other words, if user wants all jobs
@@ -103,10 +145,7 @@ class SavedSearch(models.Model):
         joinstring = ' OR '
             
         for thing in params:
-            if field in ('title', 'text', 'buid'):
-                qs.append('%s:%s' % (field, thing))
-            else:
-                qs.append('%s:%s' % (field, thing.name))
+            qs.append('%s:%s' % (field, self._escape(thing)))
 
         return joinstring.join(qs)
     

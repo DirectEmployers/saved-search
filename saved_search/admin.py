@@ -81,6 +81,8 @@ class SavedSearchForm(forms.ModelForm):
         model = SavedSearch
         exclude = ("name_slug", "querystring", "group", "url_slab", "country",
                    "city", "state")
+        fields = ("name", "location", "title", "keyword", "blurb", "show_blurb",
+                  "show_production", "site")
 
 
 class SavedSearchAdmin(admin.ModelAdmin):
