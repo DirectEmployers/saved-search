@@ -1,1 +1,1 @@
-Django-Haystack-Group-Search/groupsearch.py
+../Django-Haystack-Group-Search/groupsearch.py
