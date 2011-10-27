@@ -34,6 +34,10 @@ class SavedSearch(models.Model):
     def __unicode__(self):
         return '%s' % self.name
 
+    def _attr_dict(self):
+        return {'title': self.title, 'country': self.country, 'state': self.state,
+                'text': self.keyword, 'city': self.city}
+
     name = models.CharField(max_length=100,
                             help_text=("""
                                        A concise and descriptive name for this
@@ -94,7 +98,7 @@ class SavedSearch(models.Model):
         keywords = self._keyword_sq(self.keyword)
         sqs = SearchQuerySet().models(jobListing).narrow(self.querystring)
         for kw in keywords:
-            sqs = sqs.filter(content=kw)
+            sqs = sqs.filter(text=kw)
         return sqs
 
     def _keyword_sq(self, keyword):
