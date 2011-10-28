@@ -274,6 +274,12 @@ class SolrGroupSearchQuery(SolrSearchQuery):
 
             kwargs['sort_by'] = ", ".join(order_by_list)
 
+        if self.narrow_queries:
+            kwargs['narrow_queries'] = self.narrow_queries
+
+        if self.query_facets:
+            kwargs['query_facets'] = self.query_facets
+            
         if self.end_offset is not None:
             kwargs['end_offset'] = self.end_offset
 
