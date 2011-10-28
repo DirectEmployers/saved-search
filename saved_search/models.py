@@ -98,7 +98,8 @@ class SavedSearch(models.Model):
         keywords = self._keyword_sq(self.keyword)
         sqs = SearchQuerySet().models(jobListing).narrow(self.querystring)
         for kw in keywords:
-            sqs = sqs.filter(text=kw)
+            if kw:
+                sqs = sqs.filter(text=kw)
         return sqs
 
     def _keyword_sq(self, keyword):
