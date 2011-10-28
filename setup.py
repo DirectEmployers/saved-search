@@ -7,7 +7,7 @@ setup(
     description = "User-defined, persistent searches for Django-Haystack.",
     author = "Matt DeBoard",
     author_email = "matt@directemployers.com",
-    packages=find_packages()
+    packages=find_packages(),
     classifiers = [
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
