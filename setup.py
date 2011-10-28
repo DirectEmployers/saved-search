@@ -1,4 +1,5 @@
 from distutils.core import setup
+from setuptools import find_packages
 
 setup(
     name = "saved_search",
@@ -6,7 +7,7 @@ setup(
     description = "User-defined, persistent searches for Django-Haystack.",
     author = "Matt DeBoard",
     author_email = "matt@directemployers.com",
-    py_modules = ['saved_search'],
+    packages=find_packages()
     classifiers = [
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
