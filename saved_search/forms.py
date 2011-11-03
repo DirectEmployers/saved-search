@@ -1,19 +1,6 @@
 from django import forms
-from django.contrib import admin
-from django.contrib.admin import helpers
-from django.contrib.admin.util import unquote
 from django.contrib.auth.models import Group
-from django.core.cache import cache
-from django.core.exceptions import PermissionDenied
-from django.db import transaction, models
-from django.forms.formsets import all_valid
-from django.http import Http404
-from django.template.defaultfilters import slugify
-from django.utils.encoding import force_unicode
 from django.utils.decorators import method_decorator
-from django.utils.html import escape
-from django.utils.safestring import mark_safe
-from django.utils.translation import ugettext as _
 from django.views.decorators.csrf import csrf_protect
 
 from directseo.seo.models import SeoSite
