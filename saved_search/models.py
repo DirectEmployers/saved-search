@@ -6,6 +6,8 @@ from django.template.defaultfilters import slugify
 
 from haystack.query import SearchQuerySet
 
+from taggit.managers import TaggableManager
+
 from directseo.seo.models import (jobListing, BusinessUnit, City, Country,
                                   State, SeoSite)
 
@@ -14,7 +16,86 @@ SOLR_ESCAPE_CHARS = ['+', '-', '&&', '||', '!', '(', ')', '{', '}', '[', ']',
                      '^', '"', '~', '*', '?']
 
 
-class SavedSearch(models.Model):
+class BaseSavedSearch(models.Model):
+    name = models.CharField(max_length=100,
+                            help_text=("""A concise and descriptive name for
+                                       this saved search, e.g.: Nursing Jobs,
+                                       Tech Support Jobs in Texas"""))
+    name_slug = models.SlugField(max_length=100, blank=True, null=True)
+    date_created = models.DateField(auto_now=True)
+    querystring = models.CharField(max_length=2000, null=True, blank=True)
+    title = models.CharField(max_length=800, null=True, blank=True,
+                             help_text=("""
+                                        A comma-separated list of job titles to
+                                        search on. Terms entered here will refer
+                                        to job titles as provided in your
+                                        company's job listings. e.g.:
+                                        Dental Technician,Office Assistant
+                                        """))
+    url_slab = models.CharField(max_length=255, null=True, blank=True)
+    blurb = models.TextField(null=True, blank=True)
+    show_blurb = models.BooleanField("Use Saved Search Blurb", default=True)
+    show_production = models.BooleanField("Show in Production", default=False)
+    
+    def __unicode__(self):
+        return '%s' % self.name
+
+    def _attr_dict(self):
+        raise NotYetImplementedError
+
+    def get_sqs(self, *args, **kwargs):
+        raise NotYetImplementedError
+
+    def _escape(self, param):
+        for c in SOLR_ESCAPE_CHARS:
+            param = param.replace(c, '')
+        param = param.replace(':', '\\:')
+        return param
+
+    def _make_qs(self, field, params):
+        """
+        Generates the query string which will be passed to Solr directly.
+        
+        """
+        # If no parameter was passed in, immediately dump back out.
+        if not params:
+            return ''
+
+        params = params.split(',')
+        qs = []
+        joinstring = ' OR '
+            
+        for thing in params:
+            qs.append('%s:%s' % (field, self._escape(thing)))
+
+        return joinstring.join(qs)
+
+    def _full_qs(self, instance, fields):
+        """
+        _full_qs(instance, fields)
+        
+        `instance': SavedSearch model instance
+        `fields':   An iterable containing instance attributes you wish to
+        include in the Solr querystring.
+        
+        Join all the query substrings from various fields into one
+        'master' querystring for passage to Solr.
+        
+        """
+        terms = []
+        for attr in fields:
+            if attr:
+                terms.append(attr)
+                
+        # Using conjunction here since we want all job listings returned
+        # to conform to each individual query term.
+        return ' AND '.join(terms)
+
+    class Meta:
+        abstract = True
+        
+
+class SavedSearch(BaseSavedSearch):
     """
     This model is a glorified string manipulation object. It takes a bunch
     of user input and calculates it into a querystring, then uses that
@@ -30,47 +111,27 @@ class SavedSearch(models.Model):
     instance.
     
     """
+    group = models.ForeignKey(Group, blank=True, null=True)
+    site = models.ManyToManyField(SeoSite, blank=False, null=True)
+    country = models.CharField(max_length=800, null=True, blank=True)
+    state = models.CharField(max_length=800, null=True, blank=True)
+    city = models.CharField(max_length=800, null=True, blank=True)
+    keyword = TaggableManager()
+    # keyword = models.CharField(max_length=800, null=True, blank=True,
+    #                            help_text=("""
+    #                                       A comma-separated list of keywords to
+    #                                       search on, e.g.:
+    #                                       nursing,phlebotomy
+    #                                       """))
 
     def __unicode__(self):
         return '%s' % self.name
 
     def _attr_dict(self):
-        return {'title': self.title, 'country': self.country, 'state': self.state,
-                'text': self.keyword, 'city': self.city}
-
-    name = models.CharField(max_length=100,
-                            help_text=("""
-                                       A concise and descriptive name for this
-                                       saved search, e.g.: Nursing Jobs, Tech
-                                       Support Jobs in Texas
-                                       """))
-    name_slug = models.SlugField(max_length=100, blank=True, null=True)
-    group = models.ForeignKey(Group, blank=True, null=True)
-    site = models.ManyToManyField(SeoSite, blank=False, null=True)
-    date_created = models.DateField(auto_now=True)
-    country = models.CharField(max_length=800, null=True, blank=True)
-    state = models.CharField(max_length=800, null=True, blank=True)
-    city = models.CharField(max_length=800, null=True, blank=True)
-    keyword = models.CharField(max_length=800, null=True, blank=True,
-                               help_text=("""
-                                          A comma-separated list of keywords to
-                                          search on, e.g.:
-                                          nursing,phlebotomy
-                                          """))
-    title = models.CharField(max_length=800, null=True, blank=True,
-                             help_text=("""
-                                        A comma-separated list of job titles to
-                                        search on. Terms entered here will refer
-                                        to job titles as provided in your
-                                        company's job listings. e.g.:
-                                        Dental Technician,Office Assistant
-                                        """))
-    querystring = models.CharField(max_length=2000, null=True, blank=True)
-    url_slab = models.CharField(max_length=255, null=True, blank=True)
-    blurb = models.TextField(null=True, blank=True)
-    show_blurb = models.BooleanField("Use Saved Search Blurb", default=True)
-    show_production = models.BooleanField("Show in Production", default=False)
-
+        return {'title': self.title, 'country': self.country,
+                'state': self.state, 'text': self.keyword,
+                'city': self.city}
+        
     def clean(self):
         countries = self._make_qs('country', self.country)
         states = self._make_qs('state', self.state)
@@ -120,60 +181,6 @@ class SavedSearch(models.Model):
                 params[params.index(p)] = param.strip(' ')
 
         return params
-
-    def _escape(self, param):
-        for c in SOLR_ESCAPE_CHARS:
-            param = param.replace(c, '')
-        param = param.replace(':', "\\:")
-
-        return param
-        
-    def _make_qs(self, field, params):
-        """
-        Generates the query string which will be passed to Solr directly.
-        
-        """
-        # If no parameter was passed in, immediately dump back out.
-        if not params:
-            return ''
-
-        params = params.split(',')
-
-        qs = []
-        # All fields except full-text search, i.e. keyword search, are
-        # sought disjunctively. In other words, if user wants all jobs
-        # in Austin, Dallas and San Antonio, we want to search for all
-        # jobs in Austin OR Dallas OR San Antonio. Otherwise, searching
-        # conjunctively (AND) will result in only those jobs available
-        # in ALL of those cities together. The difference between spoken
-        # English and logical syntax.
-        joinstring = ' OR '
-            
-        for thing in params:
-            qs.append('%s:%s' % (field, self._escape(thing)))
-
-        return joinstring.join(qs)
-    
-    def _full_qs(self, instance, fields):
-        """
-        _full_qs(instance, fields)
-        
-        `instance': SavedSearch model instance
-        `fields':   An iterable containing instance attributes you wish to
-        include in the Solr querystring.
-        
-        Join all the query substrings from various fields into one
-        'master' querystring for passage to Solr.
-        
-        """
-        terms = []
-        for attr in fields:
-            if attr:
-                terms.append(attr)
-                
-        # Using conjunction here since we want all job listings returned
-        # to conform to each individual query term.
-        return ' AND '.join(terms)
 
     class Meta:
         verbose_name = 'Saved Search'
