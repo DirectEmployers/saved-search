@@ -1,15 +1,10 @@
-import re
-
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import Group
 from django.db import models
 from django.template.defaultfilters import slugify
 
 from haystack.query import SearchQuerySet
 
-from taggit.managers import TaggableManager
-
-from directseo.seo.models import (jobListing, BusinessUnit, City, Country,
-                                  State, SeoSite)
+from directseo.seo.models import jobListing, SeoSite
 
 
 SOLR_ESCAPE_CHARS = ['+', '-', '&&', '||', '!', '(', ')', '{', '}', '[', ']',
@@ -41,10 +36,10 @@ class BaseSavedSearch(models.Model):
         return '%s' % self.name
 
     def _attr_dict(self):
-        raise NotYetImplementedError
+        raise NotImplementedError
 
     def get_sqs(self, *args, **kwargs):
-        raise NotYetImplementedError
+        raise NotImplementedError
 
     def _escape(self, param):
         for c in SOLR_ESCAPE_CHARS:
@@ -116,13 +111,12 @@ class SavedSearch(BaseSavedSearch):
     country = models.CharField(max_length=800, null=True, blank=True)
     state = models.CharField(max_length=800, null=True, blank=True)
     city = models.CharField(max_length=800, null=True, blank=True)
-    keyword = TaggableManager()
-    # keyword = models.CharField(max_length=800, null=True, blank=True,
-    #                            help_text=("""
-    #                                       A comma-separated list of keywords to
-    #                                       search on, e.g.:
-    #                                       nursing,phlebotomy
-    #                                       """))
+    keyword = models.CharField(max_length=800, null=True, blank=True,
+                               help_text=("""
+                                          A comma-separated list of keywords to
+                                          search on, e.g.:
+                                          nursing,phlebotomy
+                                          """))
 
     def __unicode__(self):
         return '%s' % self.name
