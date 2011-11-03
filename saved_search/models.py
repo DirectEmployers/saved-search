@@ -35,56 +35,21 @@ class BaseSavedSearch(models.Model):
     def __unicode__(self):
         return '%s' % self.name
 
-    def _attr_dict(self):
-        raise NotImplementedError
-
     def get_sqs(self, *args, **kwargs):
+        """Return a list of results."""
         raise NotImplementedError
 
-    def _escape(self, param):
-        for c in SOLR_ESCAPE_CHARS:
-            param = param.replace(c, '')
-        param = param.replace(':', '\\:')
-        return param
+    def _escape(self):
+        """Escape special characters."""
+        raise NotImplementedError
 
-    def _make_qs(self, field, params):
-        """
-        Generates the query string which will be passed to Solr directly.
-        
-        """
-        # If no parameter was passed in, immediately dump back out.
-        if not params:
-            return ''
+    def _make_qs(self):
+        """Generate atomic elements of query."""
+        raise NotImplementedError
 
-        params = params.split(',')
-        qs = []
-        joinstring = ' OR '
-            
-        for thing in params:
-            qs.append('%s:%s' % (field, self._escape(thing)))
-
-        return joinstring.join(qs)
-
-    def _full_qs(self, instance, fields):
-        """
-        _full_qs(instance, fields)
-        
-        `instance': SavedSearch model instance
-        `fields':   An iterable containing instance attributes you wish to
-        include in the Solr querystring.
-        
-        Join all the query substrings from various fields into one
-        'master' querystring for passage to Solr.
-        
-        """
-        terms = []
-        for attr in fields:
-            if attr:
-                terms.append(attr)
-                
-        # Using conjunction here since we want all job listings returned
-        # to conform to each individual query term.
-        return ' AND '.join(terms)
+    def _full_qs(self):
+        """Combine the atomic elements of query into single query."""
+        raise NotImplementedError
 
     class Meta:
         abstract = True
@@ -175,6 +140,52 @@ class SavedSearch(BaseSavedSearch):
                 params[params.index(p)] = param.strip(' ')
 
         return params
+
+    def _escape(self, param):
+        for c in SOLR_ESCAPE_CHARS:
+            param = param.replace(c, '')
+        param = param.replace(':', '\\:')
+        return param
+
+    def _make_qs(self, field, params):
+        """
+        Generates the query string which will be passed to Solr directly.
+        
+        """
+        # If no parameter was passed in, immediately dump back out.
+        if not params:
+            return ''
+
+        params = params.split(',')
+        qs = []
+        joinstring = ' OR '
+            
+        for thing in params:
+            qs.append('%s:%s' % (field, self._escape(thing)))
+
+        return joinstring.join(qs)
+
+    def _full_qs(self, instance, fields):
+        """
+        _full_qs(instance, fields)
+        
+        `instance': SavedSearch model instance
+        `fields':   An iterable containing instance attributes you wish to
+        include in the Solr querystring.
+        
+        Join all the query substrings from various fields into one
+        'master' querystring for passage to Solr.
+        
+        """
+        terms = []
+        for attr in fields:
+            if attr:
+                terms.append(attr)
+                
+        # Using conjunction here since we want all job listings returned
+        # to conform to each individual query term.
+        return ' AND '.join(terms)
+
 
     class Meta:
         verbose_name = 'Saved Search'
