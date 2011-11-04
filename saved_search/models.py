@@ -71,8 +71,8 @@ class SavedSearch(BaseSavedSearch):
     instance.
     
     """
-    group = models.ForeignKey(Group, blank=True, null=True)
-    site = models.ManyToManyField(SeoSite, blank=False, null=True)
+    #group = models.ForeignKey(Group, blank=True, null=True)
+    #site = models.ManyToManyField(SeoSite, blank=False, null=True)
     country = models.CharField(max_length=800, null=True, blank=True)
     state = models.CharField(max_length=800, null=True, blank=True)
     city = models.CharField(max_length=800, null=True, blank=True)
