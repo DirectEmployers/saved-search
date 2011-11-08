@@ -46,6 +46,9 @@ class SavedSearchForm(forms.ModelForm):
         # to restore keywords since they're getting wiped out by our 'keyword'
         # field that gets assigned below.
         self._keywords = [i for i in self.instance.keyword.all()]
+        # Just need to subclass TagWidget from taggit to something besides
+        # TextField for a more sane scheme for rendering this. This will not
+        # be an issue outside the admin.
         self.fields['keyword'] = forms.ModelMultipleChoiceField(queryset=self.instance.keyword.all(),
                                                                 required=False,
                                                                 label="Keywords")
