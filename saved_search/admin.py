@@ -19,9 +19,10 @@ csrf_protect_m = method_decorator(csrf_protect)
 
 
 class SavedSearchAdmin(admin.ModelAdmin):
-    search_fields = ['country', 'state', 'city', 'keyword', 'title',
+    search_fields = ['country', 'state', 'city', 'title',
                      'site__name']
-    list_display = ('name', 'last_updated', 'results')
+    list_display = ('name', 'last_updated')
+    list_filter = ('group',)
     save_as = True
 
     def get_form(self, request, obj=None, **kwargs):
@@ -30,7 +31,7 @@ class SavedSearchAdmin(admin.ModelAdmin):
     @csrf_protect_m
     @transaction.commit_on_success
     def add_view(self, request, form_url='', extra_context=None):
-        "The 'add' admin view for this model."
+        """The 'add' admin view for this model."""
         model = self.model
         opts = model._meta
 
@@ -116,6 +117,9 @@ class SavedSearchAdmin(admin.ModelAdmin):
 
             if form_validated:
                 form.save()
+                # This is kind of heinous. Need some UI magic here to make this
+                # not awful.
+                form.cleaned_data['keyword'] = form._keywords + form.cleaned_data['new_keyword']
                 form.save_m2m()
                 change_message = self.construct_change_message(request, form, [])
                 self.log_change(request, new_object, change_message)
@@ -141,12 +145,12 @@ class SavedSearchAdmin(admin.ModelAdmin):
         context.update(extra_context or {})
         return self.render_change_form(request, context, change=True, obj=obj)
 
-    def queryset(self, request):
-        qs = super(SavedSearchAdmin, self).queryset(request)
-        if not request.user.is_superuser:
-            qs = qs.filter(group__in=request.user.groups.all())
+    # def queryset(self, request):
+    #     qs = super(SavedSearchAdmin, self).queryset(request)
+    #     if not request.user.is_superuser:
+    #         qs = qs.filter(group__in=request.user.groups.all())
 
-        return qs
+    #     return qs
 
     def results(self, obj):
         cache_key = 'savedsearch_count:%s' % obj.id
@@ -160,55 +164,6 @@ class SavedSearchAdmin(admin.ModelAdmin):
     def last_updated(self, obj):
         return str(obj.date_created)
     last_updated.short_description = 'Last Updated'
-
-    def _make_qs(self, field, params):
-        """
-        Generates the query string which will be passed to Solr directly.
-        
-        """
-        # If no parameter was passed in, immediately dump back out.
-        if not params:
-            return ''
-        qs = []
-        # All fields except full-text search, i.e. keyword search, are
-        # sought disjunctively. In other words, if user wants all jobs
-        # in Austin, Dallas and San Antonio, we want to search for all
-        # jobs in Austin OR Dallas OR San Antonio. Otherwise, searching
-        # conjunctively (AND) will result in only those jobs available
-        # in ALL of those cities together. The difference between spoken
-        # English and logical syntax.
-        joinstring = ' OR '
-        if field == 'text':
-            joinstring = ' AND '
-            
-        for thing in params:
-            if field in ('title', 'text'):
-                qs.append('%s:%s' % (field, thing))
-            else:
-                qs.append('%s:%s' % (field, thing.name))
-
-        return joinstring.join(qs)  
-    
-    def _full_qs(self, instance, fields):
-        """
-        _full_qs(instance, fields)
-        
-        `instance': SavedSearch model instance
-        `fields':   An iterable containing instance attributes you wish to
-        include in the Solr querystring.
-        
-        Join all the query substrings from various fields into one
-        'master' querystring for passage to Solr.
-        
-        """
-        terms = []
-        for attr in fields:
-            if attr:
-                terms.append(attr)
-                
-        # Using conjunction here since we want all job listings returned
-        # to conform to each individual query term.
-        return ' AND '.join(terms)
 
 
 admin.site.register(SavedSearch, SavedSearchAdmin)

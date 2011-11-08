@@ -4,6 +4,9 @@ from django.template.defaultfilters import slugify
 
 from haystack.query import SearchQuerySet
 
+from taggit.managers import TaggableManager
+from taggit.models import Tag
+
 from directseo.seo.models import jobListing, SeoSite
 
 
@@ -76,12 +79,7 @@ class SavedSearch(BaseSavedSearch):
     country = models.CharField(max_length=800, null=True, blank=True)
     state = models.CharField(max_length=800, null=True, blank=True)
     city = models.CharField(max_length=800, null=True, blank=True)
-    keyword = models.CharField(max_length=800, null=True, blank=True,
-                               help_text=("""
-                                          A comma-separated list of keywords to
-                                          search on, e.g.:
-                                          nursing,phlebotomy
-                                          """))
+    keyword = TaggableManager()
 
     def __unicode__(self):
         return '%s' % self.name
@@ -115,31 +113,11 @@ class SavedSearch(BaseSavedSearch):
         when passed to the Solr backend.
 
         """
-        keywords = self._keyword_sq(self.keyword)
         sqs = SearchQuerySet().models(jobListing).narrow(self.querystring)
-        for kw in keywords:
-            if kw:
-                sqs = sqs.filter(text=kw)
+        keywords = [self._escape(d['name']) for d in self.keyword.values()\
+                    if d['name']]
+        sqs = sqs.raw_search("text:%s" % ' OR '.join(keywords))
         return sqs
-
-    def _keyword_sq(self, keyword):
-        """
-        Handles the obj.keyword paramater since we need explicitly to consume
-        this value with a .filter() call. This method will automatically
-        seek exact match if there is one or more spaces in the value.
-        
-        """
-        params = keyword.split(',')
-        for param in params:
-            p = param
-            param = self._escape(param)
-            if "#@#" in param:
-                params.remove(p)
-                params += param.split("#@#")
-            else:
-                params[params.index(p)] = param.strip(' ')
-
-        return params
 
     def _escape(self, param):
         for c in SOLR_ESCAPE_CHARS:
@@ -186,8 +164,7 @@ class SavedSearch(BaseSavedSearch):
         # to conform to each individual query term.
         return ' AND '.join(terms)
 
-
     class Meta:
         verbose_name = 'Saved Search'
         verbose_name_plural = 'Saved Searches'
-        
+
