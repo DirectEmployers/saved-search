@@ -90,20 +90,17 @@ class SavedSearch(BaseSavedSearch):
                 'city': self.city}
         
     def clean(self):
-        countries = self._make_qs('country', self.country)
-        states = self._make_qs('state', self.state)
-        cities = self._make_qs('city', self.city)
-        titles = self._make_qs('title', self.title)
+        qd = {}
+        fields = ('country', 'state', 'city', 'title')
+        qd.update(((f, self._make_qs(f, getattr(self, f))) for f in fields))
         bu = [s.business_units.all() for s in self.site.all()]
         # Create a single BusinessUnit out of the list of BusinessUnits
         # returned by the list comprehension on the previous line, if
         # it is a non-empty list.
         if bu:
             bu = ','.join([str(b.id) for b in reduce(lambda x,y: x|y, bu)])
-
-        buids = self._make_qs('buid', bu)
-        self.querystring = self._full_qs(self, [countries, states, cities,
-                                                titles, buids])
+        qd['buid'] = self._make_qs('buid', bu)
+        self.qd = qd
         self.name_slug = slugify(self.name)
         self.url_slab = '%s/new-jobs::%s' % (self.name_slug, self.name)
         
@@ -113,10 +110,24 @@ class SavedSearch(BaseSavedSearch):
         when passed to the Solr backend.
 
         """
-        sqs = SearchQuerySet().models(jobListing).narrow(self.querystring)
-        keywords = [self._escape(d['name']) for d in self.keyword.values()\
-                    if d['name']]
-        sqs = sqs.raw_search("text:%s" % ' OR '.join(keywords))
+        bu = [s.business_units.all() for s in self.site.all()]
+        import ipdb
+        ipdb.set_trace()
+        
+        if bu:
+            bu = ','.join([str(b.id) for b in reduce(lambda x,y: x|y, bu)])
+
+        sqs = SearchQuerySet().models(jobListing).narrow(self._make_qs('buid', bu))
+        sqs = sqs.filter(city__exact=self.city)\
+                 .filter(country__exact=self.country)\
+                 .filter(state_exact=self.state)\
+                 .filter(title__exact=self.title)
+        if self.keyword.all():
+            keywords = [self._escape(d['name']) for d in self.keyword.values()\
+                        if d['name']]
+            for keyword in keywords:
+                sqs = sqs.filter_or(text=keyword)
+                
         return sqs
 
     def _escape(self, param):
