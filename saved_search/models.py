@@ -1,8 +1,10 @@
+import operator
+
 from django.contrib.auth.models import Group
 from django.db import models
 from django.template.defaultfilters import slugify
 
-from haystack.query import SearchQuerySet
+from haystack.query import SearchQuerySet, SQ
 
 from taggit.managers import TaggableManager
 from taggit.models import Tag
@@ -111,17 +113,26 @@ class SavedSearch(BaseSavedSearch):
 
         """
         bu = [s.business_units.all() for s in self.site.all()]
-        import ipdb
-        ipdb.set_trace()
-        
+
         if bu:
             bu = ','.join([str(b.id) for b in reduce(lambda x,y: x|y, bu)])
 
+        # "OR" terms within same fields while ANDing terms in different fields.
+        cities = reduce(operator.or_,
+                        [SQ(city__exact=c) for c in self.city.split(' OR ')])
+        countries = reduce(operator.or_,
+                           [SQ(country__exact=c) for c in
+                            self.country.split(' OR ')])
+        states = reduce(operator.or_,
+                        [SQ(state__exact=c) for c in self.state.split(' OR ')])
+        titles = reduce(operator.or_,
+                        [SQ(title__exact=c) for c in self.title.split(' OR ')])
+        
         sqs = SearchQuerySet().models(jobListing).narrow(self._make_qs('buid', bu))
-        sqs = sqs.filter(city__exact=self.city)\
-                 .filter(country__exact=self.country)\
-                 .filter(state_exact=self.state)\
-                 .filter(title__exact=self.title)
+        attrs = [cities, countries, states, titles]
+        for a in attrs:
+            sqs = sqs.filter(a)
+            
         if self.keyword.all():
             keywords = [self._escape(d['name']) for d in self.keyword.values()\
                         if d['name']]
