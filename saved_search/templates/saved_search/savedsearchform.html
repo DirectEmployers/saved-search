@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block main %}
+<div id="form">
+  <form id="new_svdsrch" method="POST" action=".">
+    {% csrf_token %}
+    {% for field in form %}
+    <label>{{ field.label }}</label>
+    <div>{{ field }}</div>
+    {% endfor %}
+  </form>
+</div><!-- #form -->
+{% endblock main %}

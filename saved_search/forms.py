@@ -11,6 +11,10 @@ from saved_search.models import SavedSearch
 csrf_protect_m = method_decorator(csrf_protect)
 
 
+class CustomTagField(TagField):
+    label = "Keywords"
+    
+
 class SavedSearchForm(forms.ModelForm):
         
     name = forms.CharField(label="Name", required=True,
@@ -28,30 +32,22 @@ class SavedSearchForm(forms.ModelForm):
                                        company's job listings. e.g.:
                                        Dental Technician,Office Assistant
                                        """))
-    location = forms.CharField(label="Location", required=False,
-                               help_text=("""Type in the name of a country, state,
-                                          region, city, etc., to search on, e.g.
-                                          "New Delhi", "Canada", "Florida"
-                                          """))
-    new_keyword = TagField(label="Add Keyword (optional)",
-                           required=False,
-                           help_text=("""Please separate your new keywords
-                                      with commas (e.g. "Waiter, Chef,
-                                      Sous Chef, Maitre'd")"""))
+    keyword = TagField(label="Keywords")
+                              
+    # location = forms.CharField(label="Location", required=False,
+    #                            help_text=("""Type in the name of a country, state,
+    #                                       region, city, etc., to search on, e.g.
+    #                                       "New Delhi", "Canada", "Florida"
+    #                                       """))
+    # new_keyword = TagField(label="Add Keyword (optional)",
+    #                        required=False,
+    #                        help_text=("""Please separate your new keywords
+    #                                   with commas (e.g. "Waiter, Chef,
+    #                                   Sous Chef, Maitre'd")"""))
 
     def __init__(self, data=None, user=None, *args, **kwargs):
         # It will filter the group based on the user.
         super(SavedSearchForm, self).__init__(data, *args, **kwargs)
-        # This form attribute is used by the SavedSearchAdmin.change_view method
-        # to restore keywords since they're getting wiped out by our 'keyword'
-        # field that gets assigned below.
-        self._keywords = [i for i in self.instance.keyword.all()]
-        # Just need to subclass TagWidget from taggit to something besides
-        # TextField for a more sane scheme for rendering this. This will not
-        # be an issue outside the admin.
-        self.fields['keyword'] = forms.ModelMultipleChoiceField(queryset=self.instance.keyword.all(),
-                                                                required=False,
-                                                                label="Keywords")
         if not user.is_superuser:
             groups = [g.id for g in user.groups.all()]
             grp_qs = Group.objects.filter(id__in=groups)
@@ -73,9 +69,14 @@ class SavedSearchForm(forms.ModelForm):
 
     class Meta:
         model = SavedSearch
-        exclude = ("name_slug", "querystring", "group", "url_slab", "country",
-                   "city", "state")
-        fields = ("name", "location", "title", "keyword", "new_keyword",
-                  "blurb", "show_blurb", "show_production", "site")
+        exclude = ("name_slug", "querystring", "group", "url_slab", "city",
+                   "state", "country")
+        fields = ("name", "title", "keyword", "blurb", "show_blurb",
+                  "show_production", "site")
 
+
+class LoginForm(forms.Form):
+    username = forms.CharField(max_length=100)
+    password = forms.CharField(max_length=30,
+                               widget=forms.PasswordInput(render_value=False))
 

@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block main %}
+<a href="?page={{ page_obj.previous_page_number }}">&laquo; Previous</a>
+<a href="?page={{ page_obj.next_page_number }}">Next &raquo;</a>
+<p><a href="new-saved-search/">New Saved Search</a></p>
+<ul id="user_items">
+  {% for item in svd_searches %}
+  {% url edit_item username=request.user svdsrch_id=item.id as item_link %}
+  <li id="srch{{ item.id }}"><a href="{{ item_link }}">{{ item.name }}</a></li>
+  {% endfor %}
+</ul>
+{% endblock main %}
