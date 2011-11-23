@@ -1,3 +1,5 @@
+import json
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User, Group
@@ -36,7 +38,6 @@ def saved_search_view(request, username, svdsrch_id=None):
             raise Http404
             
     user = get_object_or_404(User, username=username)
-    
     if svdsrch_id == None:
         form = SavedSearchForm(user=user)
     else:
@@ -92,9 +93,10 @@ def _location_data(request):
     dialogue when creating/editing Saved Searches.
     
     """
-    results = {}
-    sqs = SearchQuerySet().facet("full_loc")
+    loc_data = {'countries': {'None': {'states': {'None': {'cities': []}}}}}
+    sqs = SearchQuerySet().facet("full_loc").facet("country").facet_limit(-1)
     locs = sqs.facet_counts()['fields']['full_loc']
+    countries = sqs.facet_counts()['fields']['country']
     for loc in locs:
         loc_tuples = loc[0].split('@@')
         for atom in loc_tuples:
@@ -112,7 +114,40 @@ def _location_data(request):
     #   'state': 'Indiana'},
     #   ...
     #   etc.]
-            
+
+    # Next two iterations structure the data in `locs` to be hierarchical, e.g.
+    # {
+    #	 "countries": {
+    #		 "United States": {
+    #			 "states": {
+    #				 "Indiana": {"cities": ["Indy", "Carmel", "Richmond"]},
+    #				 "Texas"  : {"cities": ["Dallas", "Houston", "Amarillo"]},
+    #				 "Ohio"   : {"cities": ["Cleveland", "Columbus", "Cincy"]}		
+    #			 }
+    #		 },
+    #		 "Argentina": {
+    #                    "states": {
+    #                            "None": {"cities": ["Sao Paulo", "Buenos Ares"]}
+    #		 }
+    # 	 }
+    # }
+    #
+    # There are "None" keys at every geographical level (country/state/city) to
+    # capture entries that do not have values in those fields. Mostly this
+    # applies to non-Canadian/US locations.
+        
+    for country in countries:
+        loc_data['countries'][country] = {'states': {'None': {'cities': []}}}
+
+    for loc in locs:
+        state = loc['state']
+        # Drill down to the 'state' key of a `locs` member object.
+        state_key = loc_data['countries'][loc['country']]['states']
+        if not loc_data['countries'][loc['country']]['states'].get(state):
+            state_key[state] = {'cities': []}
+        state_key['cities'].append(loc['city'])
+        
+    return json.dumps(loc_data)
             
             
         
