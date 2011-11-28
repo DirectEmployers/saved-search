@@ -88,7 +88,7 @@ class SavedSearch(BaseSavedSearch):
 
     def _attr_dict(self):
         return {'title': self.title, 'country': self.country,
-                'state': self.state, 'text': self.keyword,
+                'state': self.state, 'text': [t.name for t in self.keyword.all()],
                 'city': self.city}
         
     def clean(self):
