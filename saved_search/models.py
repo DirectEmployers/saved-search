@@ -87,8 +87,9 @@ class SavedSearch(BaseSavedSearch):
         return '%s' % self.name
 
     def _attr_dict(self):
+        kw = self.keyword.all()
         return {'title': self.title, 'country': self.country,
-                'state': self.state, 'text': [t.name for t in self.keyword.all()],
+                'state': self.state, 'text': [t.name for t in kw],
                 'city': self.city}
         
     def clean(self):
@@ -132,10 +133,11 @@ class SavedSearch(BaseSavedSearch):
         attrs = [cities, countries, states, titles]
         for a in attrs:
             sqs = sqs.filter(a)
-            
-        if self.keyword.all():
-            keywords = [self._escape(d['name']) for d in self.keyword.values()\
-                        if d['name']]
+
+        kw = self.keyword.all()
+        if kw:
+            kwv = self.keyword.values()
+            keywords = [self._escape(d['name']) for d in kwv if d['name']]
             for keyword in keywords:
                 sqs = sqs.filter_or(text=keyword)
                 
