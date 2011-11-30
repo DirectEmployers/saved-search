@@ -117,10 +117,6 @@ class SavedSearchAdmin(admin.ModelAdmin):
 
             if form_validated:
                 form.save()
-                # This is kind of heinous. Need some UI magic here to make this
-                # not awful.
-                form.cleaned_data['keyword'] = form._keywords + form.cleaned_data['new_keyword']
-                form.save_m2m()
                 change_message = self.construct_change_message(request, form, [])
                 self.log_change(request, new_object, change_message)
                 return self.response_change(request, new_object)

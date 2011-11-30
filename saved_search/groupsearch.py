@@ -72,7 +72,7 @@ class SolrGroupSearchBackend(SolrSearchBackend):
             'group': group,
             'group.ngroups': group_ngroups,
             'group.format': group_format,
-            'group.query': '@@@'.join(group_query)
+            'group.query': group_query
         }
 
         if fields:
@@ -258,7 +258,7 @@ class SolrGroupSearchQuery(SolrSearchQuery):
         kwargs = {
             'start_offset': self.start_offset,
             'result_class': self.result_class,
-            'group_query': [self.clean(q) for q in self.group_queries],
+            'group_query': [i for i in self.group_queries],
             'group_format': self.group_format,
             'group_ngroups': self.group_ngroups
         }
