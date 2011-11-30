@@ -89,8 +89,14 @@ class SavedSearch(BaseSavedSearch):
     def _attr_dict(self):
         kw = self.keyword.all()
         return {'title': self.title, 'country': self.country,
-                'state': self.state, 'text': [t.name for t in kw],
+                'state': self.state, 'text': [self._drop_chars(t.name) for t in kw],
                 'city': self.city}
+
+    def _drop_chars(self, tag):
+        for i in SOLR_ESCAPE_CHARS:
+            tag = tag.replace(i, "")
+
+        return tag
         
     def clean(self):
         qd = {}
@@ -133,7 +139,7 @@ class SavedSearch(BaseSavedSearch):
             kwv = self.keyword.values()
             keywords = [self._escape(d['name']) for d in kwv if d['name']]
             for keyword in keywords:
-                sqs = sqs.filter(SQ(text=keyword))
+                sqs = sqs.filter(text__exact=keyword)
                 
         return sqs
 
