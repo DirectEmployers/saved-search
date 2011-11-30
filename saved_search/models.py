@@ -87,12 +87,15 @@ class SavedSearch(BaseSavedSearch):
         return '%s' % self.name
 
     def _attr_dict(self):
+        kw = self.keyword.all()
         return {'title': self.title, 'country': self.country,
-                'state': self.state, 'text': self.keyword,
+                'state': self.state, 'text': [t.name for t in kw],
                 'city': self.city}
         
     def clean(self):
         qd = {}
+        if not self.pk:
+            self.save()
         fields = ('country', 'state', 'city', 'title')
         qd.update(((f, self._make_qs(f, getattr(self, f))) for f in fields))
         bu = [s.business_units.all() for s in self.site.all()]
@@ -112,35 +115,43 @@ class SavedSearch(BaseSavedSearch):
         when passed to the Solr backend.
 
         """
+        attrs = ("city", "state", "country", "title")
         bu = [s.business_units.all() for s in self.site.all()]
 
         if bu:
             bu = ','.join([str(b.id) for b in reduce(lambda x,y: x|y, bu)])
 
-        # "OR" terms within same fields while ANDing terms in different fields.
-        cities = reduce(operator.or_,
-                        [SQ(city__exact=c) for c in self.city.split(' OR ')])
-        countries = reduce(operator.or_,
-                           [SQ(country__exact=c) for c in
-                            self.country.split(' OR ')])
-        states = reduce(operator.or_,
-                        [SQ(state__exact=c) for c in self.state.split(' OR ')])
-        titles = reduce(operator.or_,
-                        [SQ(title__exact=c) for c in self.title.split(' OR ')])
-        
         sqs = SearchQuerySet().models(jobListing).narrow(self._make_qs('buid', bu))
         attrs = [cities, countries, states, titles]
         for a in attrs:
             sqs = sqs.filter(a)
-            
-        if self.keyword.all():
-            keywords = [self._escape(d['name']) for d in self.keyword.values()\
-                        if d['name']]
+
+        kw = self.keyword.all()
+        if kw:
+            kwv = self.keyword.values()
+            keywords = [self._escape(d['name']) for d in kwv if d['name']]
             for keyword in keywords:
                 sqs = sqs.filter_or(text=keyword)
                 
         return sqs
 
+    def _attr_item(self, a):
+        """
+        Return an SQ object to encapsulate query fragment for a given attribute.
+        
+        """
+        x = getattr(self, a).split(' OR ')
+        d = {'title': [SQ(title__exact=c) for c in x],
+             'state': [SQ(state__exact=c) for c in x],
+             'city': [SQ(city__exact=c) for c in x],
+             'country': [SQ(country__exact=c) for c in x]}
+        
+        if len(x) > 1:
+            return reduce(operator.or_, d[a])
+        else:
+            return None
+            
+        
     def _escape(self, param):
         for c in SOLR_ESCAPE_CHARS:
             param = param.replace(c, '')
