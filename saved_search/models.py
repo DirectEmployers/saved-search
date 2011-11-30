@@ -13,7 +13,7 @@ from directseo.seo.models import jobListing, SeoSite
 
 
 SOLR_ESCAPE_CHARS = ['+', '-', '&&', '||', '!', '(', ')', '{', '}', '[', ']',
-                     '^', '"', '~', '*', '?']
+                     '^', '~', '"', '*', '?']
 
 
 class BaseSavedSearch(models.Model):
@@ -124,14 +124,16 @@ class SavedSearch(BaseSavedSearch):
         sqs = SearchQuerySet().models(jobListing).narrow(self._make_qs('buid', bu))
         
         for a in attrs:
-            sqs = sqs.filter(SQ(("%s__exact" % a, getattr(self, a))))
+            attr = getattr(self, a)
+            if attr:
+                sqs = sqs.filter(SQ(("%s__exact" % a, attr)))
 
         kw = self.keyword.all()
         if kw:
             kwv = self.keyword.values()
             keywords = [self._escape(d['name']) for d in kwv if d['name']]
             for keyword in keywords:
-                sqs = sqs.filter_or(text=keyword)
+                sqs = sqs.filter(SQ(text=keyword))
                 
         return sqs
 
