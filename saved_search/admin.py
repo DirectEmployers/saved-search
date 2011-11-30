@@ -21,7 +21,7 @@ csrf_protect_m = method_decorator(csrf_protect)
 class SavedSearchAdmin(admin.ModelAdmin):
     search_fields = ['country', 'state', 'city', 'title',
                      'site__name']
-    list_display = ('name', 'last_updated')
+    list_display = ('name', 'last_updated', 'group')
     list_filter = ('group',)
     save_as = True
 
