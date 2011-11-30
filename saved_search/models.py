@@ -122,9 +122,9 @@ class SavedSearch(BaseSavedSearch):
             bu = ','.join([str(b.id) for b in reduce(lambda x,y: x|y, bu)])
 
         sqs = SearchQuerySet().models(jobListing).narrow(self._make_qs('buid', bu))
-        attrs = [cities, countries, states, titles]
+        
         for a in attrs:
-            sqs = sqs.filter(a)
+            sqs = sqs.filter(SQ(("%s__exact" % a, getattr(self, a))))
 
         kw = self.keyword.all()
         if kw:
@@ -135,23 +135,6 @@ class SavedSearch(BaseSavedSearch):
                 
         return sqs
 
-    def _attr_item(self, a):
-        """
-        Return an SQ object to encapsulate query fragment for a given attribute.
-        
-        """
-        x = getattr(self, a).split(' OR ')
-        d = {'title': [SQ(title__exact=c) for c in x],
-             'state': [SQ(state__exact=c) for c in x],
-             'city': [SQ(city__exact=c) for c in x],
-             'country': [SQ(country__exact=c) for c in x]}
-        
-        if len(x) > 1:
-            return reduce(operator.or_, d[a])
-        else:
-            return None
-            
-        
     def _escape(self, param):
         for c in SOLR_ESCAPE_CHARS:
             param = param.replace(c, '')
