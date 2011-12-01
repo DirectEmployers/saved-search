@@ -1,11 +1,12 @@
 from django.conf import settings
 from django.db.models.loading import get_model
+from django.utils import tree
 
-from haystack.backends import log_query, EmptyResults, BaseEngine
+from haystack.backends import log_query, EmptyResults, BaseEngine, SearchNode
 from haystack.backends.solr_backend import SolrSearchBackend, SolrSearchQuery
 from haystack.constants import ID, DJANGO_CT, DJANGO_ID
 from haystack.models import SearchResult
-from haystack.query import SearchQuerySet
+from haystack.query import SearchQuerySet, SQ
 
 from pysolr import SolrError
 
@@ -244,13 +245,50 @@ class SolrGroupSearchQuery(SolrSearchQuery):
     def __init__(self, **kwargs):
         super(SolrGroupSearchQuery, self).__init__(**kwargs)
         self.group = True
+        self.gquery_filter = SearchNode()
         self.group_format = "simple"
         self.group_ngroups = True
         self.group_queries = set()
 
-    def add_group_query(self, query):
-        self.group_queries.add(query)
+    def add_group_query(self, query_filter, use_or=False):
+        """
+        Adds a group query to the current query.
+        """
 
+        if use_or:
+            connector = SQ.OR
+        else:
+            connector = SQ.AND
+
+        if self.gquery_filter and query_filter.connector != SQ.AND and len(query_filter) > 1:
+            self.gquery_filter.start_subtree(connector)
+            subtree = True
+        else:
+            subtree = False
+
+        for child in query_filter.children:
+            if isinstance(child, tree.Node):
+                self.gquery_filter.start_subtree(connector)
+                self.add_filter(child)
+                self.gquery_filter.end_subtree()
+            else:
+                expression, value = child
+                self.gquery_filter.add((expression, value), connector)
+
+            connector = query_filter.connector
+
+        if query_filter.negated:
+            self.gquery_filter.negate()
+
+        if subtree:
+            self.gquery_filter.end_subtree()
+        
+        self.group_queries.add(
+            self.gquery_filter.as_query_string(
+                self.build_query_fragment))
+
+        self.gquery_filter = SearchNode()
+            
     def run(self, spelling_query=None):
         """Builds & executes the query. Returns a list of result groupings."""
             
