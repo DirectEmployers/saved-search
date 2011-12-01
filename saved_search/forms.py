@@ -32,7 +32,7 @@ class SavedSearchForm(forms.ModelForm):
                                        company's job listings. e.g.:
                                        Dental Technician,Office Assistant
                                        """))
-    keyword = TagField(label="Keywords")
+    keyword = TagField(label="Keywords", required=False)
                               
     # location = forms.CharField(label="Location", required=False,
     #                            help_text=("""Type in the name of a country, state,
