@@ -15,11 +15,8 @@ class GroupQuerySet(SearchQuerySet):
     def group_query(self, *args, **kwargs):
         """
         Performs a group query against a standard query.
+        Works in the same manner as .filter().
         
-        Usage:
-        gqs = GroupQuerySet().filter(title="Number 1 Wok")
-        gqs = gqs.group_query("city:Boise")
-
         """
         clone = self._clone()
         clone.query.add_group_query(*args, **kwargs)
