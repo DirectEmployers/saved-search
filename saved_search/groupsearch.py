@@ -12,7 +12,7 @@ from pysolr import SolrError
 
 
 class GroupQuerySet(SearchQuerySet):
-    def group_query(self, query):
+    def group_query(self, *args, **kwargs):
         """
         Performs a group query against a standard query.
         
@@ -22,7 +22,7 @@ class GroupQuerySet(SearchQuerySet):
 
         """
         clone = self._clone()
-        clone.query.add_group_query(query)
+        clone.query.add_group_query(*args, **kwargs)
         return clone
 
     def __len__(self):
