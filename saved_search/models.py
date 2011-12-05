@@ -99,19 +99,9 @@ class SavedSearch(BaseSavedSearch):
         return tag
         
     def clean(self):
-        qd = {}
         if not self.pk:
             self.save()
         fields = ('country', 'state', 'city', 'title')
-        qd.update(((f, self._make_qs(f, getattr(self, f))) for f in fields))
-        bu = [s.business_units.all() for s in self.site.all()]
-        # Create a single BusinessUnit out of the list of BusinessUnits
-        # returned by the list comprehension on the previous line, if
-        # it is a non-empty list.
-        if bu:
-            bu = ','.join([str(b.id) for b in reduce(lambda x,y: x|y, bu)])
-        qd['buid'] = self._make_qs('buid', bu)
-        self.qd = qd
         self.name_slug = slugify(self.name)
         self.url_slab = '%s/new-jobs::%s' % (self.name_slug, self.name)
         
