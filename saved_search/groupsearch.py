@@ -250,11 +250,10 @@ class SolrGroupSearchQuery(SolrSearchQuery):
         self.group_ngroups = True
         self.group_queries = set()
 
-    def add_group_query(self, query_filter, use_or=False):
+    def add_group_query(self, query_filter, use_or=False, is_master=True):
         """
         Adds a group query to the current query.
         """
-
         if use_or:
             connector = SQ.OR
         else:
@@ -269,7 +268,7 @@ class SolrGroupSearchQuery(SolrSearchQuery):
         for child in query_filter.children:
             if isinstance(child, tree.Node):
                 self.gquery_filter.start_subtree(connector)
-                self.add_filter(child)
+                self.add_group_query(child, is_master=False)
                 self.gquery_filter.end_subtree()
             else:
                 expression, value = child
@@ -282,12 +281,18 @@ class SolrGroupSearchQuery(SolrSearchQuery):
 
         if subtree:
             self.gquery_filter.end_subtree()
-        
-        self.group_queries.add(
-            self.gquery_filter.as_query_string(
-                self.build_query_fragment))
 
-        self.gquery_filter = SearchNode()
+        if is_master:
+            # If and only if we have iterated through all the children of the
+            # query_filter, the SQ object, append the query fragment to the
+            # set of group queries, and reset self.gquery_filter back to an
+            # empty SearchNode.
+            qfrag = self.gquery_filter.as_query_string(self.build_query_fragment)
+            
+            if qfrag:
+                self.group_queries.add(qfrag)
+
+            self.gquery_filter = SearchNode()
             
     def run(self, spelling_query=None):
         """Builds & executes the query. Returns a list of result groupings."""
