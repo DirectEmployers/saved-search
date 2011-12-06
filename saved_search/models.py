@@ -87,10 +87,13 @@ class SavedSearch(BaseSavedSearch):
         return '%s' % self.name
 
     def _attr_dict(self):
+        sep = " OR "
         kw = self.keyword.all()
-        return {'title': self.title, 'country': self.country,
-                'state': self.state, 'text': [self._drop_chars(t.name) for t in kw],
-                'city': self.city}
+        return {'title': [i for i in self.title.split(sep)],
+                'country': [i for i in self.country.split(sep)],
+                'state': [i for i in self.state.split(sep)],
+                'text': [self._drop_chars(t.name) for t in kw],
+                'city': [i for i in self.city.split(sep)]}
 
     def _drop_chars(self, tag):
         for i in SOLR_ESCAPE_CHARS:
@@ -121,25 +124,24 @@ class SavedSearch(BaseSavedSearch):
         when passed to the Solr backend.
 
         """
-        attrs = ("city", "state", "country", "title")
+        attr_dict = self._attr_dict()
         bu = [s.business_units.all() for s in self.site.all()]
-
+        filts = []
+        
         if bu:
             bu = ','.join([str(b.id) for b in reduce(lambda x,y: x|y, bu)])
 
         sqs = SearchQuerySet().models(jobListing).narrow(self._make_qs('buid', bu))
         
-        for a in attrs:
-            attr = getattr(self, a)
-            if attr:
-                sqs = sqs.filter(SQ(("%s__exact" % a, attr)))
+        for attr,val in attr_dict.items():
+            if any(val):
+                filt = reduce(operator.or_,
+                              [SQ(("%s__exact" % attr, i)) for i in val if i])
+                filts.append(filt)
 
-        kw = self.keyword.all()
-        if kw:
-            kwv = self.keyword.values()
-            keywords = [self._escape(d['name']) for d in kwv if d['name']]
-            for keyword in keywords:
-                sqs = sqs.filter(text__exact=keyword)
+        if filts:
+            q_filter = reduce(operator.and_, filts)
+            sqs = sqs.filter(q_filter)
                 
         return sqs
 
