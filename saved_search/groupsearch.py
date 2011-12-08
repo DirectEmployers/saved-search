@@ -247,7 +247,8 @@ class SolrGroupSearchQuery(SolrSearchQuery):
         self.group_ngroups = True
         self.group_queries = set()
 
-    def add_group_query(self, query_filter, use_or=False, is_master=True):
+    def add_group_query(self, query_filter, use_or=False, is_master=True,
+                        tag=None):
         """
         Adds a group query to the current query.
         """
@@ -285,6 +286,11 @@ class SolrGroupSearchQuery(SolrSearchQuery):
             # set of group queries, and reset self.gquery_filter back to an
             # empty SearchNode.
             qfrag = self.gquery_filter.as_query_string(self.build_query_fragment)
+
+            # If specified, add a local param to identify individual group
+            # query statements.
+            if tag:
+                qfrag = '{!tag="%s"} ' % str(tag) + qfrag
             
             if qfrag:
                 self.group_queries.add(qfrag)
