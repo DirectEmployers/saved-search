@@ -93,15 +93,9 @@ class SavedSearch(BaseSavedSearch):
         return {'title': [i for i in self.title.split(sep)],
                 'country': [i for i in self.country.split(sep)],
                 'state': [i for i in self.state.split(sep)],
-                'text': [fix_ampersands(self._drop_chars(t.name)) for t in kw],
+                'text': [fix_ampersands(t.name) for t in kw],
                 'city': [i for i in self.city.split(sep)]}
 
-    def _drop_chars(self, tag):
-        for i in SOLR_ESCAPE_CHARS:
-            tag = tag.replace(i, "")
-
-        return tag
-        
     def clean(self):
         if not self.pk:
             self.save()
