@@ -93,7 +93,7 @@ class SavedSearch(BaseSavedSearch):
         return {'title': [i for i in self.title.split(sep)],
                 'country': [i for i in self.country.split(sep)],
                 'state': [i for i in self.state.split(sep)],
-                'text': [fix_ampersands(t.name) for t in kw],
+                'text': [fix_ampersands(t.name) for t in kw] or [u''],
                 'city': [i for i in self.city.split(sep)]}
 
     def clean(self):
