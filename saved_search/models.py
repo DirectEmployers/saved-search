@@ -1,16 +1,4 @@
-import operator
-
-from django.contrib.auth.models import Group
 from django.db import models
-from django.template.defaultfilters import slugify
-from django.utils.html import fix_ampersands
-
-from haystack.query import SearchQuerySet, SQ
-
-from taggit.managers import TaggableManager
-from taggit.models import Tag
-
-
 
 SOLR_ESCAPE_CHARS = ['+', '-', '&&', '||', '!', '(', ')', '{', '}', '[', ']',
                      '^', '~', '"', '*', '?']
