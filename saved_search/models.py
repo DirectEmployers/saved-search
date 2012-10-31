@@ -24,6 +24,10 @@ class BaseSavedSearch(models.Model):
     blurb = models.TextField(null=True, blank=True)
     show_blurb = models.BooleanField("Use Saved Search Blurb", default=True)
     show_production = models.BooleanField("Show in Production", default=False)
+
+    #make specific text fields sortable as boolean objects in the admin panel
+    querystring.char_as_boolean_filter = True
+    blurb.char_as_boolean_filter = True
     
     def __unicode__(self):
         return '%s' % self.name
