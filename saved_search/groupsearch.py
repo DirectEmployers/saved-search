@@ -297,16 +297,17 @@ class SolrGroupSearchQuery(SolrSearchQuery):
 
             self.gquery_filter = SearchNode()
             
-    def run(self, spelling_query=None):
+    def run(self, spelling_query=None, fields=''):
         """Builds & executes the query. Returns a list of result groupings."""
-            
+
         final_query = self.build_query()
         kwargs = {
             'start_offset': self.start_offset,
             'result_class': self.result_class,
             'group_query': [i for i in self.group_queries],
             'group_format': self.group_format,
-            'group_ngroups': self.group_ngroups
+            'group_ngroups': self.group_ngroups,
+            'fields': fields,
         }
 
         if self.order_by:
@@ -325,7 +326,7 @@ class SolrGroupSearchQuery(SolrSearchQuery):
 
         if self.query_facets:
             kwargs['query_facets'] = self.query_facets
-            
+
         if self.end_offset is not None:
             kwargs['end_offset'] = self.end_offset
 
@@ -335,7 +336,7 @@ class SolrGroupSearchQuery(SolrSearchQuery):
         if spelling_query:
             kwargs['spelling_query'] = spelling_query
 
-        self._results = self.backend.search(final_query, **kwargs)
+        self._results = self.backend.search(final_query,  **kwargs)
         self._hit_count = sum([r['hits'] for r in self._results])
 
     def has_run(self):
