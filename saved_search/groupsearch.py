@@ -336,7 +336,7 @@ class SolrGroupSearchQuery(SolrSearchQuery):
         if spelling_query:
             kwargs['spelling_query'] = spelling_query
 
-        self._results = self.backend.search(final_query,  **kwargs)
+        self._results = self.backend.search(final_query, **kwargs)
         self._hit_count = sum([r['hits'] for r in self._results])
 
     def has_run(self):
