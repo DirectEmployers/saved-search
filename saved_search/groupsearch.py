@@ -55,7 +55,7 @@ class SolrGroupSearchBackend(SolrSearchBackend):
                limit_to_registered_models=None, result_class=None, group=True,
                group_ngroups=True, group_query=[], group_format="simple",
                **kwargs):
-        
+
         if not group_query:
             raise GroupQueryError("You must specify at least one group query.")
                 
@@ -79,9 +79,10 @@ class SolrGroupSearchBackend(SolrSearchBackend):
         if sort_by is not None:
             kwargs['sort'] = sort_by
 
+        if start_offset is None and end_offset is None:
+            kwargs['rows'] = 1
         if start_offset is not None:
             kwargs['start'] = start_offset
-
         if end_offset is not None:
             kwargs['rows'] = end_offset - start_offset
 
@@ -99,7 +100,12 @@ class SolrGroupSearchBackend(SolrSearchBackend):
 
         if facets is not None:
             kwargs['facet'] = 'on'
-            kwargs['facet.field'] = facets
+            kwargs['facet.field'] = facets.keys()
+
+            for facet_field, options in facets.items():
+                for key, value in options.items():
+                    kwargs['f.%s.facet.%s' % (facet_field, key)] = self.conn._from_python(value)
+
 
         kwargs['group'] = self.conn._from_python(kwargs['group'])
         kwargs['group.ngroups'] = self.conn._from_python(kwargs['group.ngroups'])
@@ -159,19 +165,22 @@ class SolrGroupSearchBackend(SolrSearchBackend):
 
         return [self._process_results(res, highlight=highlight,
                                       result_class=result_class)
-                for res in raw_results]
+                for res in raw_results.grouped.iteritems()]
 
     def _process_results(self, raw_results, highlight=False, result_class=None):
         from haystack import connections
 
         results = []
-        hits = raw_results.hits
-        
         try:
-            group = raw_results.group
-        except:
+            hits = raw_results[1]['doclist']['numFound']
+        except (KeyError, IndexError):
+            hits = 0
+
+        try:
+            group = raw_results[0]
+        except IndexError:
             group = ""
-            
+
         facets = {}
         spelling_suggestion = None
 
@@ -198,37 +207,6 @@ class SolrGroupSearchBackend(SolrSearchBackend):
                     # For some reason, it's an array of pairs. Pull off the
                     # collated result from the end.
                     spelling_suggestion = raw_results.spellcheck.get('suggestions')[-1]
-
-        unified_index = connections[self.connection_alias].get_unified_index()
-        indexed_models = unified_index.get_indexed_models()
-
-        for raw_result in raw_results.docs:
-            app_label, model_name = raw_result[DJANGO_CT].split('.')
-            additional_fields = {}
-            model = get_model(app_label, model_name)
-
-            if model and model in indexed_models:
-                for key, value in raw_result.items():
-                    index = unified_index.get_index(model)
-                    string_key = str(key)
-
-                    if string_key in index.fields and hasattr(index.fields[string_key], 'convert'):
-                        additional_fields[string_key] = index.fields[string_key].convert(value)
-                    else:
-                        additional_fields[string_key] = self.conn._to_python(value)
-
-                del(additional_fields[DJANGO_CT])
-                del(additional_fields[DJANGO_ID])
-                del(additional_fields['score'])
-
-                if raw_result[ID] in getattr(raw_results, 'highlighting', {}):
-                    additional_fields['highlighted'] = raw_results.highlighting[raw_result[ID]]
-
-                result = result_class(app_label, model_name, raw_result[DJANGO_ID],
-                                      raw_result['score'], **additional_fields)
-                results.append(result)
-            else:
-                hits -= 1
 
         return {
             'group': group,
