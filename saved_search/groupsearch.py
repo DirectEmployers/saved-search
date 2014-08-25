@@ -81,9 +81,9 @@ class SolrGroupSearchBackend(SolrSearchBackend):
 
         if start_offset is None and end_offset is None:
             kwargs['rows'] = 1
-        if start_offset is not None:
+        elif start_offset is not None:
             kwargs['start'] = start_offset
-        if end_offset is not None:
+        elif end_offset is not None:
             kwargs['rows'] = end_offset - start_offset
 
         if highlight is True:
