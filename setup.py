@@ -2,13 +2,13 @@ from distutils.core import setup
 from setuptools import find_packages
 
 setup(
-    name = "saved_search",
-    version = "0.2",
-    description = "User-defined, persistent searches for Django-Haystack.",
-    author = "Matt DeBoard",
-    author_email = "matt@directemployers.com",
+    name="saved_search",
+    version="0.3",
+    description="User-defined, persistent searches for Django-Haystack.",
+    author="Matt DeBoard",
+    author_email="matt@directemployers.com",
     packages=find_packages(),
-    classifiers = [
+    classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
