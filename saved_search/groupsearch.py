@@ -12,6 +12,8 @@ from pysolr import SolrError
 
 
 class GroupQuerySet(SearchQuerySet):
+    search_parameters = []
+
     def group_query(self, *args, **kwargs):
         """
         Performs a group query against a standard query.
@@ -27,6 +29,22 @@ class GroupQuerySet(SearchQuerySet):
             qc = self.query.get_count()
             
         return len(self.query._results)
+
+    #TODO. Replace redundant methods with set_param.
+    #Jason McLaughlin 09/27/2012
+    def add_param(self, param, value):
+        """
+        Sets an arbitrary Solr parameter.
+
+        Inputs:
+        :param: solr parameter to set
+        :value: value to assign to solr parameter
+
+        """
+        clone = self._clone()
+        clone.query.set_param(param, value)
+        self.search_parameters.append(param)
+        return clone
 
 
 class GroupQueryError(Exception):
@@ -54,7 +72,7 @@ class SolrGroupSearchBackend(SolrSearchBackend):
                query_facets=None, narrow_queries=None, spelling_query=None,
                limit_to_registered_models=None, result_class=None, group=True,
                group_ngroups=True, group_query=[], group_format="simple",
-               **kwargs):
+               bq=None, **kwargs):
 
         if not group_query:
             raise GroupQueryError("You must specify at least one group query.")
@@ -153,6 +171,9 @@ class SolrGroupSearchBackend(SolrSearchBackend):
         if narrow_queries is not None:
             kwargs['fq'] = list(narrow_queries)
 
+        if bq is not None:
+            kwargs['bq'] = bq
+
         try:
             raw_results = self.conn.search(query_string, **kwargs)
         except (IOError, SolrError), e:
@@ -216,7 +237,10 @@ class SolrGroupSearchBackend(SolrSearchBackend):
             'spelling_suggestion': spelling_suggestion
         }
 
+
 class SolrGroupSearchQuery(SolrSearchQuery):
+    search_parameters = []
+
     def __init__(self, **kwargs):
         super(SolrGroupSearchQuery, self).__init__(**kwargs)
         self.group = True
@@ -224,6 +248,11 @@ class SolrGroupSearchQuery(SolrSearchQuery):
         self.group_format = "simple"
         self.group_ngroups = True
         self.group_queries = set()
+
+    #TODO Replace redundant set_foo methods with set_param
+    def set_param(self, param, value):
+        self.search_parameters.append(param)
+        setattr(self, param, value)
 
     def add_group_query(self, query_filter, use_or=False, is_master=True,
                         tag=None):
@@ -321,6 +350,8 @@ class SolrGroupSearchQuery(SolrSearchQuery):
     def _clone(self, **kwargs):
         clone = super(SolrGroupSearchQuery, self)._clone(**kwargs)
         clone.group_queries = self.group_queries
+        for param in self.search_parameters:
+            setattr(clone, param, getattr(self, param, ""))
         return clone
         
 
