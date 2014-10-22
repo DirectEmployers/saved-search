@@ -163,9 +163,12 @@ class SolrGroupSearchBackend(SolrSearchBackend):
                            e)
             raw_results = [EmptyResults()]
 
-        return [self._process_results(res, highlight=highlight,
-                                      result_class=result_class)
-                for res in raw_results.grouped.iteritems()]
+        if hasattr(raw_results, 'grouped'):
+            return [self._process_results(res, highlight=highlight,
+                                          result_class=result_class)
+                    for res in raw_results.grouped.iteritems()]
+        else:
+            return []
 
     def _process_results(self, raw_results, highlight=False, result_class=None):
         from haystack import connections
