@@ -1,5 +1,4 @@
 from django.conf import settings
-from django.db.models.loading import get_model
 from django.utils import tree
 
 from haystack.backends import log_query, EmptyResults, BaseEngine, SearchNode
