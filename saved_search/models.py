@@ -11,7 +11,7 @@ class BaseSavedSearch(models.Model):
                                        Tech Support Jobs in Texas"""))
     name_slug = models.SlugField(max_length=100, blank=True, null=True)
     date_created = models.DateField(auto_now=True)
-    querystring = models.CharField(max_length=16000, null=True, blank=True)
+    querystring = models.CharField(max_length=8000, null=True, blank=True)
     title = models.CharField(max_length=800, null=True, blank=True,
                              help_text=("""
                                         A comma-separated list of job titles to
