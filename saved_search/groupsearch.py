@@ -154,7 +154,7 @@ class SolrGroupSearchBackend(SolrSearchBackend):
 
         try:
             raw_results = self.conn.search(query_string, **kwargs)
-        except (IOError, SolrError), e:
+        except (IOError, SolrError) as e:
             if not self.silently_fail:
                 raise
 
