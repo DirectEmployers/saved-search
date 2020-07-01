@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 setup(
     name = "saved_search",
-    version = "0.2",
+    version = "0.3",
     description = "User-defined, persistent searches for Django-Haystack.",
     author = "Matt DeBoard",
     author_email = "matt@directemployers.com",
